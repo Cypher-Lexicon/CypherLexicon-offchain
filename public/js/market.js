@@ -45,7 +45,7 @@ const MarketFlow = {
           <span class="web3-network">${Web3Client.networkName()}</span>
         </div>
         <div class="web3-status-row">
-          <span class="info-label">NFT TOKENS</span>
+          <span class="info-label">TOKENS</span>
           <span id="user-token-count">${this.userTokens.length} owned</span>
         </div>
         <button class="btn btn-sm btn-secondary" onclick="MarketFlow.refreshTokens()">REFRESH TOKENS</button>
@@ -61,7 +61,7 @@ const MarketFlow = {
     }
   },
 
-  /** Refresh NFT tokens owned by the connected wallet */
+  /** Refresh tokens owned by the connected wallet */
   async refreshTokens() {
     if (!Web3Client.connected) {
       UI.toast('Connect wallet first.', 'info');
@@ -91,7 +91,7 @@ const MarketFlow = {
         }
       }
 
-      UI.log(`Loaded ${this.userTokens.length} NFT tokens for wallet.`);
+      UI.log(`Loaded ${this.userTokens.length} token(s) for wallet.`);
       UI.toast(`${this.userTokens.length} tokens found.`, this.userTokens.length ? 'success' : 'info');
     } catch (err) {
       UI.log(`Token fetch failed: ${err.message}`);
@@ -120,7 +120,7 @@ const MarketFlow = {
     if (!container) return;
 
     if (!this.deployedMarkets || this.deployedMarkets.length === 0) {
-      container.innerHTML = `<div class="empty-state">No markets deployed yet. Create one below or resolve an auction to mint an NFT first.</div>`;
+      container.innerHTML = `<div class="empty-state">No markets deployed yet. Create one below or resolve an auction to mint a token first.</div>`;
       return;
     }
 
@@ -218,7 +218,7 @@ const MarketFlow = {
     const duration = UI.getValue('market-duration');
     const feeBps = UI.getValue('market-fee-bps');
 
-    if (!tokenId) { UI.toast('Select an NFT token.', 'error'); return; }
+    if (!tokenId) { UI.toast('Select a token.', 'error'); return; }
     if (!question) { UI.toast('Enter a question.', 'error'); return; }
     if (!optionsRaw) { UI.toast('Enter options (comma-separated).', 'error'); return; }
 

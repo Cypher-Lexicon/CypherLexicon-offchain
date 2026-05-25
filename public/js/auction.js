@@ -3,7 +3,7 @@
  *
  * Manages the full Web3 auction flow:
  *   Create → Bidding Open → Close Bidding → AI Filter
- *   → Set Shortlist → Oracle Resolve → Mint NFT
+ *   → Set Shortlist → Oracle Resolve → Mint Token
  *
  * Requires a connected wallet (Web3Client) and backend APIs.
  */
@@ -192,8 +192,8 @@ const AuctionFlow = {
         UI.log(`Resolving Auction #${this.currentAuctionId} with oracle signature...`);
         await API.resolveAuction(this.currentAuctionId, winnerAddr, winningScore, metadataURI);
         this._updateLifecycle(4); // COMPLETED
-        UI.log(`Auction #${this.currentAuctionId} resolved! Winner: ${winner.name}, NFT minted.`);
-        UI.toast('Auction resolved and NFT minted!', 'success');
+        UI.log(`Auction #${this.currentAuctionId} resolved! Winner: ${winner.name}, token minted.`);
+        UI.toast('Auction resolved and token minted!', 'success');
 
         // Refresh tokens for market creation
         if (typeof MarketFlow !== 'undefined' && MarketFlow.refreshTokens) {

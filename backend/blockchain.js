@@ -6,7 +6,7 @@
  *
  * Required env vars:
  *   ARC_RPC_URL     — Arc Testnet RPC endpoint
- *   DEPLOYER_PRIVATE_KEY — Deployer's private key (for tx signing)
+ *   BACKEND_PRIVATE_KEY — Backend operator's private key (for tx signing)
  *   AUCTION_MANAGER_ADDRESS — Deployed AuctionManager contract
  *   MARKET_FACTORY_ADDRESS  — Deployed MarketFactory contract
  *   NFT_CONTRACT_ADDRESS    — Deployed PublishingRightsNFT contract
@@ -23,7 +23,6 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 // ─── Configuration ───────────────────────────────────────────────────────────
 
 const RPC_URL = process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.network';
-const PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
 const AUCTION_MANAGER_ADDR = process.env.AUCTION_MANAGER_ADDRESS;
 const MARKET_FACTORY_ADDR = process.env.MARKET_FACTORY_ADDRESS;
 const NFT_CONTRACT_ADDR = process.env.NFT_CONTRACT_ADDRESS;
@@ -224,7 +223,7 @@ export async function getDeployedMarkets() {
   return contract.getDeployedMarkets();
 }
 
-export async function getNFTTokensForOwner(owner) {
+export async function getTokensForOwner(owner) {
   const contract = getNFTContract();
   return contract.getTokensByOwner(owner);
 }

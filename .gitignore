@@ -7,5 +7,14 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+coverage/
+dist/
+build/
 # Old index.html at root (moved to public/)
 /index.html

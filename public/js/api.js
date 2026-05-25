@@ -89,7 +89,7 @@ const API = {
 
   // ─── Prediction Markets (Phase 2) ──────────────────────────
 
-  /** Create a prediction market from an NFT token */
+  /** Create a prediction market from a token */
   async createMarket(tokenId, question, options, bettingDuration, feeBps) {
     const res = await fetch('/api/markets/create', {
       method: 'POST',
@@ -125,7 +125,7 @@ const API = {
     return res.json();
   },
 
-  /** Get NFT tokens owned by an address */
+  /** Get tokens owned by an address */
   async getTokens(owner) {
     const res = await fetch(`/api/tokens/${owner}`);
     if (!res.ok) throw new Error(`Fetch tokens failed: ${res.status}`);

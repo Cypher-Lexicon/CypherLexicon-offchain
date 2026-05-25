@@ -27,7 +27,7 @@ import {
   resolveMarket,
   getMarketDetails,
   getDeployedMarkets,
-  getNFTTokensForOwner,
+  getTokensForOwner,
   isBackendWalletConfigured
 } from './blockchain.js';
 
@@ -310,7 +310,7 @@ app.post('/api/auctions/:id/resolve', async (req, res) => {
 });
 
 /**
- * POST /api/markets/create — Create prediction market (NFT holder)
+ * POST /api/markets/create — Create prediction market (token holder)
  * Body: { tokenId, question, options[], bettingDuration, feeBps }
  */
 app.post('/api/markets/create', async (req, res) => {
@@ -373,11 +373,11 @@ app.get('/api/markets', async (req, res) => {
 });
 
 /**
- * GET /api/tokens/:owner — Get NFT tokens for an address
+ * GET /api/tokens/:owner — Get tokens for an address
  */
 app.get('/api/tokens/:owner', async (req, res) => {
   try {
-    const tokens = await getNFTTokensForOwner(req.params.owner);
+    const tokens = await getTokensForOwner(req.params.owner);
     res.json(tokens.map(t => t.toString()));
   } catch (error) {
     console.error('Error fetching tokens:', error);
