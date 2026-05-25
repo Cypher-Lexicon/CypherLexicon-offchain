@@ -94,6 +94,12 @@ const App = {
   async _checkWeb3Status() {
     try {
       const status = await API.getWeb3Status();
+
+      // Cache the USDC address for direct contract interactions
+      if (status.usdc_address) {
+        Web3Client.usdcAddress = status.usdc_address;
+      }
+
       if (status.oracle_ready || status.backend_ready) {
         UI.log(`Web3 backend: oracle=${status.oracle_ready ? 'ONLINE' : 'OFFLINE'}, backend=${status.backend_ready ? 'ONLINE' : 'OFFLINE'}`);
 

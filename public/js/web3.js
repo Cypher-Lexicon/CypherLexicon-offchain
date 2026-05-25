@@ -13,6 +13,9 @@ const Web3Client = {
   chainId: null,
   connected: false,
 
+  // ─── Contract Addresses (cached from backend) ────────────
+  usdcAddress: null,
+
   // ─── Initialization ────────────────────────────────────────
 
   /** Check if window.ethereum is available */
@@ -94,8 +97,85 @@ const Web3Client = {
   getProviderContract(address, abi) {
     if (!this.provider) throw new Error('Wallet not connected');
     return new ethers.Contract(address, abi, this.provider);
-  }
+  },
+
+  // ─── USDC Helpers ───────────────────────────────────────
+
+  /** Get the USDC contract instance (read-only via provider) */
+  getUSDCContract() {
+    if (!this.usdcAddress) throw new Error('USDC address not loaded from backend');
+    return this.getProviderContract(this.usdcAddress, ERC20_ABI);
+  },
+
+  /** Get USDC balance for the connected wallet */
+  async getUSDCBalance() {
+    const usdc = this.getUSDCContract();
+    const decimals = await usdc.decimals();
+    const raw = await usdc.balanceOf(this.walletAddress);
+    return { raw, formatted: ethers.formatUnits(raw, decimals), decimals: Number(decimals) };
+  },
+
+  /**
+   * Approve USDC spending for a spender address.
+   * Returns the tx receipt, or null if allowance is already sufficient.
+   */
+  async approveUSDC(spender, amountWei) {
+    if (!this.signer) throw new Error('Wallet not connected');
+    if (!this.usdcAddress) throw new Error('USDC address not loaded');
+
+    const usdc = new ethers.Contract(this.usdcAddress, ERC20_ABI, this.signer);
+
+    // Check current allowance
+    const allowance = await usdc.allowance(this.walletAddress, spender);
+    if (allowance >= amountWei) {
+      return null; // Already approved
+    }
+
+    UI.log(`Requesting USDC approval for ${ethers.formatUnits(amountWei, 6)} USDC...`);
+    const tx = await usdc.approve(spender, amountWei);
+    UI.log(`Approval tx submitted: ${tx.hash.slice(0, 10)}...`);
+    const receipt = await tx.wait();
+    UI.log(`USDC approval confirmed in block ${receipt.blockNumber}`);
+    return receipt;
+  },
+
+  // ─── Prediction Market Helpers ───────────────────────────
+
+  /** Get a PredictionMarket contract instance (with signer for writes) */
+  getPredictionMarketSigner(marketAddress) {
+    return this.getSignerContract(marketAddress, PredictionMarketABI);
+  },
+
+  /** Get a PredictionMarket contract instance (read-only) */
+  getPredictionMarketProvider(marketAddress) {
+    return this.getProviderContract(marketAddress, PredictionMarketABI);
+  },
 };
 
 // Global callback for wallet changes (set by app.js)
 let onWalletChanged = null;
+
+// ─── Contract ABIs (human-readable, ethers v6 compatible) ───────────
+
+/** ERC20 minimal ABI for USDC approve / allowance / balanceOf */
+const ERC20_ABI = [
+  'function approve(address spender, uint256 amount) external returns (bool)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
+  'function decimals() external view returns (uint8)',
+  'function balanceOf(address account) external view returns (uint256)',
+];
+
+/** PredictionMarket ABI — mirrors the on-chain contract interface */
+const PredictionMarketABI = [
+  'function getMarketDetails() external view returns (string,string[],uint256,uint256,uint256,uint8)',
+  'function getOptionPoolAmounts() external view returns (uint256[] memory)',
+  'function getOptionCount() external view returns (uint256)',
+  'function getMarketState() external view returns (uint8)',
+  'function getClaimableWinnings(address user) external view returns (uint256)',
+  'function getClaimablePublisherFees() external view returns (uint256)',
+  'function placeBet(uint256 optionIndex, uint256 amount) external',
+  'function closeBetting() external',
+  'function resolveMarket(uint256 winningOptionIndex, bytes calldata oracleSignature) external',
+  'function claimWinnings() external returns (uint256)',
+  'function claimPublisherFees() external returns (uint256)',
+];

@@ -168,17 +168,39 @@ const MarketFlow = {
         optionsContainer.innerHTML = details.options.map((opt, oi) => `
           <div class="market-option">
             <span>${oi}. ${opt}</span>
-            <span class="market-option-pool">---</span>
+            <span class="market-option-pool" id="market-pool-${idx}-${oi}">---</span>
           </div>
         `).join('');
+      }
+
+      // Fetch on-chain pool amounts directly from the PredictionMarket contract
+      if (Web3Client.connected && Web3Client.usdcAddress) {
+        this._refreshPoolAmounts(address, idx);
       }
     } catch (err) {
       console.warn(`Failed to load market ${idx} details:`, err.message);
     }
   },
 
+  /** Fetch option pool amounts from the PredictionMarket contract */
+  async _refreshPoolAmounts(marketAddress, idx) {
+    try {
+      const market = Web3Client.getPredictionMarketProvider(marketAddress);
+      const pools = await market.getOptionPoolAmounts();
+      const usdc = Web3Client.getUSDCContract();
+      const decimals = await usdc.decimals();
+
+      pools.forEach((raw, oi) => {
+        const formatted = parseFloat(ethers.formatUnits(raw, decimals)).toFixed(2);
+        UI.setText(`market-pool-${idx}-${oi}`, `${formatted} USDC`);
+      });
+    } catch (err) {
+      console.warn(`Failed to fetch pool amounts for market ${idx}:`, err.message);
+    }
+  },
+
   /** Show a bet form inline for a market */
-  loadBetForm(address, idx) {
+  async loadBetForm(address, idx) {
     if (!Web3Client.connected) {
       UI.toast('Connect wallet to place bets.', 'error');
       return;
@@ -191,16 +213,34 @@ const MarketFlow = {
     if (!betRow) {
       betRow = document.createElement('div');
       betRow.className = 'bet-row';
+
+      // Fetch USDC balance for display
+      let balanceText = '---';
+      try {
+        const bal = await Web3Client.getUSDCBalance();
+        balanceText = `${parseFloat(bal.formatted).toFixed(2)} USDC`;
+      } catch (e) { /* ignore */ }
+
       betRow.innerHTML = `
-        <input type="number" id="bet-amount-${idx}" placeholder="Amount (USDC)" min="1" value="10" style="width:120px;">
-        <input type="number" id="bet-option-${idx}" placeholder="Option #" min="0" value="0" style="width:80px;">
-        <button class="btn btn-sm btn-primary" id="btn-place-bet-${idx}">BET</button>
-        <button class="btn btn-sm btn-danger" id="btn-resolve-market-${idx}">RESOLVE</button>
+        <div style="font-size:0.75rem;color:#6b7280;margin-bottom:0.35rem;">
+          BALANCE: <span id="usdc-balance-${idx}" style="color:var(--terminal-green);">${balanceText}</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <input type="number" id="bet-amount-${idx}" placeholder="Amount (USDC)" min="0.01" step="0.01" value="10" style="width:130px;">
+          <input type="number" id="bet-option-${idx}" placeholder="Option #" min="0" value="0" style="width:80px;">
+          <button class="btn btn-sm btn-primary" id="btn-place-bet-${idx}">BET</button>
+          <button class="btn btn-sm btn-secondary" id="btn-close-betting-${idx}">CLOSE BETTING</button>
+          <button class="btn btn-sm btn-danger" id="btn-resolve-market-${idx}">RESOLVE</button>
+          <button class="btn btn-sm btn-secondary" id="btn-claim-winnings-${idx}">CLAIM</button>
+        </div>
+        <div id="bet-status-${idx}" style="font-size:0.7rem;color:var(--terminal-amber);margin-top:0.35rem;"></div>
       `;
       card.appendChild(betRow);
 
       document.getElementById(`btn-place-bet-${idx}`).addEventListener('click', () => this.placeBet(address, idx));
+      document.getElementById(`btn-close-betting-${idx}`).addEventListener('click', () => this.closeMarketBetting(address, idx));
       document.getElementById(`btn-resolve-market-${idx}`).addEventListener('click', () => this.resolveMarket(address, idx));
+      document.getElementById(`btn-claim-winnings-${idx}`).addEventListener('click', () => this.claimMarketWinnings(address, idx));
     }
   },
 
@@ -248,20 +288,178 @@ const MarketFlow = {
   // ─── Place Bet ─────────────────────────────────────────────
 
   async placeBet(marketAddress, idx) {
-    const amount = UI.getValue(`bet-amount-${idx}`);
-    const option = UI.getValue(`bet-option-${idx}`);
-
-    if (!amount || !option) {
-      UI.toast('Fill in bet amount and option.', 'error');
+    if (!Web3Client.connected) {
+      UI.toast('Connect wallet first.', 'error');
+      return;
+    }
+    if (!Web3Client.usdcAddress) {
+      UI.toast('USDC address not loaded. Check backend connection.', 'error');
       return;
     }
 
-    // Note: In a fully integrated system, this would call the
-    // PredictionMarket contract directly. The backend exposes
-    // the market address; the frontend uses the wallet signer.
-    UI.log(`Bet placed: ${amount} USDC on option ${option} for market ${marketAddress.slice(0, 10)}...`);
-    UI.toast(`Bet of ${amount} USDC placed on option #${option}!`, 'success');
-    UI.toast('Betting via browser wallet requires direct contract calls (not yet wired).', 'info');
+    const amountStr = UI.getValue(`bet-amount-${idx}`);
+    const optionStr = UI.getValue(`bet-option-${idx}`);
+    const option = parseInt(optionStr);
+
+    if (!amountStr || isNaN(option) || option < 0) {
+      UI.toast('Fill in a valid amount and option number.', 'error');
+      return;
+    }
+
+    const statusEl = document.getElementById(`bet-status-${idx}`);
+    const btn = document.getElementById(`btn-place-bet-${idx}`);
+
+    try {
+      UI.setDisabled(`btn-place-bet-${idx}`, true);
+      if (btn) btn.textContent = '...';
+
+      // Parse USDC amount with correct decimals
+      const usdc = Web3Client.getUSDCContract();
+      const decimals = await usdc.decimals();
+      const amountWei = ethers.parseUnits(amountStr, decimals);
+
+      // ── Step 1: Approve USDC ──────────────────────────────
+      if (statusEl) statusEl.textContent = 'Checking USDC allowance...';
+      UI.log(`Checking USDC allowance for market ${marketAddress.slice(0, 10)}...`);
+
+      const approvalReceipt = await Web3Client.approveUSDC(marketAddress, amountWei);
+      if (approvalReceipt) {
+        UI.toast('USDC approved for betting.', 'success');
+      }
+
+      // ── Step 2: Place bet on PredictionMarket ──────────────
+      if (statusEl) statusEl.textContent = 'Placing bet on-chain...';
+      UI.log(`Placing bet: ${amountStr} USDC on option #${option} for market ${marketAddress.slice(0, 10)}...`);
+
+      const market = Web3Client.getPredictionMarketSigner(marketAddress);
+      const tx = await market.placeBet(option, amountWei);
+      UI.toast('Bet submitted. Waiting for confirmation...', 'info');
+      if (statusEl) statusEl.textContent = `Tx submitted: ${tx.hash.slice(0, 10)}... waiting...`;
+
+      const receipt = await tx.wait();
+
+      UI.log(`Bet confirmed in block ${receipt.blockNumber}! ${amountStr} USDC on option #${option}`);
+      UI.toast(`Bet of ${amountStr} USDC placed on option #${option}!`, 'success');
+      if (statusEl) statusEl.textContent = `Confirmed in block ${receipt.blockNumber}`;
+
+      // Refresh USDC balance display and pool amounts
+      try {
+        const bal = await Web3Client.getUSDCBalance();
+        UI.setText(`usdc-balance-${idx}`, `${parseFloat(bal.formatted).toFixed(2)} USDC`);
+      } catch (e) { /* ignore */ }
+      await this._refreshPoolAmounts(marketAddress, idx);
+
+    } catch (err) {
+      const msg = err.reason || err.message || String(err);
+      UI.log(`Bet failed: ${msg}`);
+      UI.toast(`Bet failed: ${msg}`, 'error');
+      if (statusEl) statusEl.textContent = `Error: ${msg}`;
+    } finally {
+      UI.setDisabled(`btn-place-bet-${idx}`, false);
+      if (btn) btn.textContent = 'BET';
+    }
+  },
+
+  // ─── Close Betting ────────────────────────────────────────
+
+  async closeMarketBetting(marketAddress, idx) {
+    if (!Web3Client.connected) {
+      UI.toast('Connect wallet first.', 'error');
+      return;
+    }
+
+    try {
+      UI.log(`Closing betting for market ${marketAddress.slice(0, 10)}...`);
+      const market = Web3Client.getPredictionMarketSigner(marketAddress);
+      const tx = await market.closeBetting();
+      UI.toast('Closing betting... waiting for confirmation...', 'info');
+      const receipt = await tx.wait();
+
+      UI.log(`Betting closed in block ${receipt.blockNumber}.`);
+      UI.toast('Betting closed!', 'success');
+
+      await this.loadMarkets();
+    } catch (err) {
+      const msg = err.reason || err.message || String(err);
+      UI.log(`Close betting failed: ${msg}`);
+      UI.toast(`Failed: ${msg}`, 'error');
+    }
+  },
+
+  // ─── Claim Winnings ───────────────────────────────────────
+
+  /**
+   * Claim winnings from a resolved market.
+   * Calls PredictionMarket.claimWinnings() which auto-transfers USDC to msg.sender.
+   * claimPublisherFees() is only callable by the PublishingRightsNFT contract —
+   * regular users must use claimWinnings().
+   */
+  async claimMarketWinnings(marketAddress, idx) {
+    if (!Web3Client.connected) {
+      UI.toast('Connect wallet first.', 'error');
+      return;
+    }
+
+    const statusEl = document.getElementById(`bet-status-${idx}`);
+    const btn = document.getElementById(`btn-claim-winnings-${idx}`);
+
+    try {
+      // ── Step 1: Check claimable amount (read-only) ────────
+      const marketRO = Web3Client.getPredictionMarketProvider(marketAddress);
+
+      // Also check market state first
+      const details = await marketRO.getMarketDetails();
+      const state = ['INACTIVE', 'BETTING_OPEN', 'BETTING_CLOSED', 'RESOLVED'][details[5]];
+      if (state !== 'RESOLVED') {
+        UI.toast('Market not yet resolved.', 'info');
+        UI.log(`Cannot claim — market state is ${state}.`);
+        return;
+      }
+
+      const claimableRaw = await marketRO.getClaimableWinnings(Web3Client.walletAddress);
+      const usdc = Web3Client.getUSDCContract();
+      const decimals = await usdc.decimals();
+      const claimable = ethers.formatUnits(claimableRaw, decimals);
+
+      if (parseFloat(claimable) <= 0) {
+        UI.toast('No winnings to claim. You may not have bet on the winning option, or already claimed.', 'info');
+        UI.log(`No claimable winnings — either no winning bet or already claimed.`);
+        return;
+      }
+
+      // ── Step 2: Call claimWinnings() on-chain ─────────────
+      UI.log(`Claimable: ${claimable} USDC. Calling claimWinnings()...`);
+      UI.toast(`Claiming ${parseFloat(claimable).toFixed(2)} USDC...`, 'info');
+      if (statusEl) statusEl.textContent = 'Claiming winnings...';
+      UI.setDisabled(`btn-claim-winnings-${idx}`, true);
+      if (btn) btn.textContent = '...';
+
+      const market = Web3Client.getPredictionMarketSigner(marketAddress);
+      const tx = await market.claimWinnings();
+      UI.toast('Claim submitted. Waiting for confirmation...', 'info');
+      if (statusEl) statusEl.textContent = `Tx: ${tx.hash.slice(0, 10)}...`;
+
+      const receipt = await tx.wait();
+
+      UI.log(`Winnings claimed in block ${receipt.blockNumber}! ${claimable} USDC received.`);
+      UI.toast(`Claimed ${parseFloat(claimable).toFixed(2)} USDC!`, 'success');
+      if (statusEl) statusEl.textContent = `Claimed ${parseFloat(claimable).toFixed(2)} USDC`;
+
+      // Refresh USDC balance
+      try {
+        const bal = await Web3Client.getUSDCBalance();
+        UI.setText(`usdc-balance-${idx}`, `${parseFloat(bal.formatted).toFixed(2)} USDC`);
+      } catch (e) { /* ignore */ }
+
+    } catch (err) {
+      const msg = err.reason || err.message || String(err);
+      UI.log(`Claim failed: ${msg}`);
+      UI.toast(`Claim failed: ${msg}`, 'error');
+      if (statusEl) statusEl.textContent = `Error: ${msg}`;
+    } finally {
+      UI.setDisabled(`btn-claim-winnings-${idx}`, false);
+      if (btn) btn.textContent = 'CLAIM';
+    }
   },
 
   // ─── Resolve Market ────────────────────────────────────────

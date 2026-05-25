@@ -188,6 +188,7 @@ app.get('/api/web3/status', (req, res) => {
     auction_manager: process.env.AUCTION_MANAGER_ADDRESS || null,
     market_factory: process.env.MARKET_FACTORY_ADDRESS || null,
     nft_contract: process.env.NFT_CONTRACT_ADDRESS || null,
+    usdc_address: process.env.USDC_ADDRESS || null,
   });
 });
 

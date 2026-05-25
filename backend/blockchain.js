@@ -63,6 +63,8 @@ const PredictionMarketABI = [
   'function placeBet(uint256 optionIndex, uint256 amount) external',
   'function closeBetting() external',
   'function resolveMarket(uint256 winningOptionIndex, bytes calldata oracleSignature) external',
+  'function claimWinnings() external returns (uint256)',
+  'function claimPublisherFees() external returns (uint256)',
 ];
 
 const PublishingRightsNFTABI = [
