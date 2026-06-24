@@ -1,0 +1,8 @@
+[createAuction] attempting (auto-nonce)...
+[createAuction] tx submitted: 0x4d712133098eed51a20a7668807f3f1143bfadfabcf4eb3665c4bbc2f332c601
+[createAuction] tx=0x4d712133098eed51a20a7668807f3f1143bfadfabcf4eb3665c4bbc2f332c601 block=48524605
+[closeBidding] attempting (auto-nonce)...
+Error filtering auction: Error: Cannot set shortlist in state BIDDING_CLOSED. Auction must be in BIDDING_CLOSED state.
+    at setShortlist (file:///home/ricardo/github/CypherLexicon-offchain/backend/core/blockchain.js:176:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///home/ricardo/github/CypherLexicon-offchain/backend/auction/routes.js:394:22
