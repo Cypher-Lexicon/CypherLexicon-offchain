@@ -1,5 +1,5 @@
 node_modules/
-mentalModels/
+.mentalModels/
 .env
 .env.*
 !.env.example
@@ -14,10 +14,9 @@ Thumbs.db
 .contracts/
 *.swp
 *.swo
-*~
 coverage/
 dist/
 build/
 AUCTION_ENDING_GUIDE.md*
-# Old index.html at root (moved to public/)
-/index.html
+package.json*
+package-lock.json*
