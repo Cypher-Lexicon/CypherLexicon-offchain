@@ -300,19 +300,26 @@ const MarketFlow = {
 
     try {
       UI.log(`Creating prediction market: "${question.substring(0, 50)}..."`);
-      const result = await API.createMarket(
-        tokenId, question, options,
-        duration || 3600,
-        feeBps || 250
-      );
 
-      UI.log(`Market created: ${result.marketAddress}`);
+      const factory = Web3Client.getMarketFactorySigner();
+      const tx = await factory.createMarket(
+        BigInt(tokenId), question, options,
+        BigInt(duration || 3600),
+        BigInt(feeBps || 250)
+      );
+      UI.toast('Transaction submitted. Waiting for confirmation...', 'info');
+
+      const receipt = await tx.wait();
+      const marketAddress = await factory.tokenToMarket(BigInt(tokenId));
+
+      UI.log(`Market created: ${marketAddress}`);
       UI.toast('Market created successfully!', 'success');
       await this.loadMarkets();
       UI.switchTab('markets');
     } catch (err) {
-      UI.log(`Market creation failed: ${err.message}`);
-      UI.toast(`Failed: ${err.message}`, 'error');
+      const msg = err.reason || err.message || String(err);
+      UI.log(`Market creation failed: ${msg}`);
+      UI.toast(`Failed: ${msg}`, 'error');
     }
   },
 

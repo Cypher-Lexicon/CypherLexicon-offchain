@@ -64,6 +64,7 @@ const App = {
     try {
       const status = await API.getWeb3Status();
       if (status.auction_manager) { Web3Client.auctionManagerAddress = status.auction_manager; }
+      if (status.market_factory) { Web3Client.marketFactoryAddress = status.market_factory; }
 
       if (status.oracle_ready || status.backend_ready) {
         UI.log(`Web3 backend: oracle=${status.oracle_ready ? 'ONLINE' : 'OFFLINE'}, backend=${status.backend_ready ? 'ONLINE' : 'OFFLINE'}`);

@@ -16,6 +16,9 @@ const Web3Client = {
   // ─── Contract Addresses (cached from backend) ────────────
   // usdcAddress removed — contracts now use native currency (ARC)
 
+  auctionManagerAddress: null,
+  marketFactoryAddress: null,
+
   // ─── Initialization ────────────────────────────────────────
 
   /** Check if window.ethereum is available */
@@ -127,6 +130,14 @@ const Web3Client = {
     if (!this.auctionManagerAddress) throw new Error('AuctionManager address not loaded');
     return this.getProviderContract(this.auctionManagerAddress, AuctionManagerABI);
   },
+
+  // ─── Market Factory Helpers ────────────────────────────
+
+  /** Get a MarketFactory contract instance (with signer for writes) */
+  getMarketFactorySigner() {
+    if (!this.marketFactoryAddress) throw new Error('MarketFactory address not loaded');
+    return this.getSignerContract(this.marketFactoryAddress, MarketFactoryABI);
+  },
 };
 
 // Global callback for wallet changes (set by app.js)
@@ -166,4 +177,12 @@ const PredictionMarketABI = [
   'function resolveMarket(uint256 winningOptionIndex, bytes oracleSignature) external',
   'function claimWinnings() external returns (uint256)',
   'function claimPublisherFees() external returns (uint256)',
+];
+
+/** MarketFactory ABI — deploys new prediction markets */
+const MarketFactoryABI = [
+  'event MarketDeployed(address indexed marketAddress, uint256 indexed tokenId, address indexed publisher)',
+  'function createMarket(uint256 tokenId, string question, string[] options, uint256 bettingDuration, uint256 feeBps) external returns (address)',
+  'function getDeployedMarkets() external view returns (address[] memory)',
+  'function tokenToMarket(uint256 tokenId) external view returns (address)',
 ];
