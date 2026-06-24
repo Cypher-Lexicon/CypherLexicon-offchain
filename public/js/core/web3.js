@@ -14,7 +14,7 @@ const Web3Client = {
   connected: false,
 
   // ─── Contract Addresses (cached from backend) ────────────
-  usdcAddress: null,
+  // usdcAddress removed — contracts now use native currency (ARC)
 
   // ─── Initialization ────────────────────────────────────────
 
@@ -99,46 +99,6 @@ const Web3Client = {
     return new ethers.Contract(address, abi, this.provider);
   },
 
-  // ─── USDC Helpers ───────────────────────────────────────
-
-  /** Get the USDC contract instance (read-only via provider) */
-  getUSDCContract() {
-    if (!this.usdcAddress) throw new Error('USDC address not loaded from backend');
-    return this.getProviderContract(this.usdcAddress, ERC20_ABI);
-  },
-
-  /** Get USDC balance for the connected wallet */
-  async getUSDCBalance() {
-    const usdc = this.getUSDCContract();
-    const decimals = await usdc.decimals();
-    const raw = await usdc.balanceOf(this.walletAddress);
-    return { raw, formatted: ethers.formatUnits(raw, decimals), decimals: Number(decimals) };
-  },
-
-  /**
-   * Approve USDC spending for a spender address.
-   * Returns the tx receipt, or null if allowance is already sufficient.
-   */
-  async approveUSDC(spender, amountWei) {
-    if (!this.signer) throw new Error('Wallet not connected');
-    if (!this.usdcAddress) throw new Error('USDC address not loaded');
-
-    const usdc = new ethers.Contract(this.usdcAddress, ERC20_ABI, this.signer);
-
-    // Check current allowance
-    const allowance = await usdc.allowance(this.walletAddress, spender);
-    if (allowance >= amountWei) {
-      return null; // Already approved
-    }
-
-    UI.log(`Requesting USDC approval for ${ethers.formatUnits(amountWei, 6)} USDC...`);
-    const tx = await usdc.approve(spender, amountWei);
-    UI.log(`Approval tx submitted: ${tx.hash.slice(0, 10)}...`);
-    const receipt = await tx.wait();
-    UI.log(`USDC approval confirmed in block ${receipt.blockNumber}`);
-    return receipt;
-  },
-
   // ─── Prediction Market Helpers ───────────────────────────
 
   /** Get a PredictionMarket contract instance (with signer for writes) */
@@ -174,36 +134,13 @@ let onWalletChanged = null;
 
 // ─── Contract ABIs (human-readable, ethers v6 compatible) ───────────
 
-/** ERC20 minimal ABI for USDC approve / allowance / balanceOf */
-const ERC20_ABI = [
-  'function approve(address spender, uint256 amount) external returns (bool)',
-  'function allowance(address owner, address spender) external view returns (uint256)',
-  'function decimals() external view returns (uint8)',
-  'function balanceOf(address account) external view returns (uint256)',
-];
-
-/** PredictionMarket ABI — mirrors the on-chain contract interface */
-const PredictionMarketABI = [
-  'function getMarketDetails() external view returns (string,string[],uint256,uint256,uint256,uint8)',
-  'function getOptionPoolAmounts() external view returns (uint256[] memory)',
-  'function getOptionCount() external view returns (uint256)',
-  'function getMarketState() external view returns (uint8)',
-  'function getClaimableWinnings(address user) external view returns (uint256)',
-  'function getClaimablePublisherFees() external view returns (uint256)',
-  'function placeBet(uint256 optionIndex, uint256 amount) external',
-  'function closeBetting() external',
-  'function resolveMarket(uint256 winningOptionIndex, bytes calldata oracleSignature) external',
-  'function claimWinnings() external returns (uint256)',
-  'function claimPublisherFees() external returns (uint256)',
-];
-
 /** AuctionManager ABI — mirrors the on-chain contract interface */
 const AuctionManagerABI = [
   'function createAuction(string questionHash, uint256 minimumStake, uint256 duration) external returns (uint256)',
-  'function placeBid(uint256 auctionId, uint256 stakeAmount, string calldata proposalHash) external',
+  'function placeBid(uint256 auctionId, string proposalHash) external payable',
   'function closeBidding(uint256 auctionId) external',
-  'function setShortlist(uint256 auctionId, address[] calldata finalists) external',
-  'function resolveAuction(uint256 auctionId, address winner, uint256 winningScore, string calldata metadataURI, bytes calldata oracleSignature) external',
+  'function setShortlist(uint256 auctionId, address[] finalists) external',
+  'function resolveAuction(uint256 auctionId, address winner, uint256 winningScore, string metadataURI, bytes oracleSignature) external',
   'function withdrawStake(uint256 auctionId) external',
   'function getAuction(uint256 auctionId) external view returns (tuple(address,string,uint256,uint256,uint8,address[],address[],address,uint256,uint256,bool))',
   'function getAuctionState(uint256 auctionId) external view returns (uint8)',
@@ -214,4 +151,19 @@ const AuctionManagerABI = [
   'function isShortlisted(uint256 auctionId, address bidder) external view returns (bool)',
   'function stakeWithdrawn(uint256 auctionId, address bidder) external view returns (bool)',
   'function auctionCount() external view returns (uint256)',
+];
+
+/** PredictionMarket ABI — mirrors the on-chain contract interface */
+const PredictionMarketABI = [
+  'function getMarketDetails() external view returns (string,string[],uint256,uint256,uint256,uint8)',
+  'function getOptionPoolAmounts() external view returns (uint256[] memory)',
+  'function getOptionCount() external view returns (uint256)',
+  'function getMarketState() external view returns (uint8)',
+  'function getClaimableWinnings(address user) external view returns (uint256)',
+  'function getClaimablePublisherFees() external view returns (uint256)',
+  'function placeBet(uint256 optionIndex) external payable',
+  'function closeBetting() external',
+  'function resolveMarket(uint256 winningOptionIndex, bytes oracleSignature) external',
+  'function claimWinnings() external returns (uint256)',
+  'function claimPublisherFees() external returns (uint256)',
 ];

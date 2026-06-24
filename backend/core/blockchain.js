@@ -1,15 +1,5 @@
 /**
- * blockchain.js — Contract Interaction Helpers
- *
- * Provides utilities to interact with the Prediction Market Auction
- * smart contracts on Arc Testnet using ethers.js v6.
- *
- * Required env vars:
- *   ARC_RPC_URL     — Arc Testnet RPC endpoint
- *   BACKEND_PRIVATE_KEY — Backend operator's private key (for tx signing)
- *   AUCTION_MANAGER_ADDRESS — Deployed AuctionManager contract
- *   MARKET_FACTORY_ADDRESS  — Deployed MarketFactory contract
- *   NFT_CONTRACT_ADDRESS    — Deployed PublishingRightsNFT contract
+ * blockchain.js — Contract Interaction Helpers (backend/core)
  */
 
 import { ethers } from 'ethers';
@@ -18,9 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
-
-// ─── Configuration ───────────────────────────────────────────────────────────
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 const RPC_URL = process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.network';
 const AUCTION_MANAGER_ADDR = process.env.AUCTION_MANAGER_ADDRESS;
@@ -31,14 +19,13 @@ const BACKEND_PRIVATE_KEY = process.env.BACKEND_PRIVATE_KEY;
 let provider = null;
 let backendWallet = null;
 
-// ─── ABI Fragments ───────────────────────────────────────────────────────────
-
 const AuctionManagerABI = [
+  'event AuctionCreated(uint256 indexed auctionId, address indexed creator, string questionHash, uint256 minimumStake, uint256 biddingEndTime)',
   'function createAuction(string questionHash, uint256 minimumStake, uint256 duration) external returns (uint256)',
-  'function placeBid(uint256 auctionId, uint256 stakeAmount, string calldata proposalHash) external',
+  'function placeBid(uint256 auctionId, string proposalHash) external payable',
   'function closeBidding(uint256 auctionId) external',
-  'function setShortlist(uint256 auctionId, address[] calldata finalists) external',
-  'function resolveAuction(uint256 auctionId, address winner, uint256 winningScore, string calldata metadataURI, bytes calldata oracleSignature) external',
+  'function setShortlist(uint256 auctionId, address[] finalists) external',
+  'function resolveAuction(uint256 auctionId, address winner, uint256 winningScore, string metadataURI, bytes oracleSignature) external',
   'function withdrawStake(uint256 auctionId) external',
   'function getAuction(uint256 auctionId) external view returns (tuple(address,string,uint256,uint256,uint8,address[],address[],address,uint256,uint256,bool))',
   'function getAuctionState(uint256 auctionId) external view returns (uint8)',
@@ -52,6 +39,7 @@ const AuctionManagerABI = [
 ];
 
 const MarketFactoryABI = [
+  'event MarketDeployed(address indexed marketAddress, uint256 indexed tokenId, address indexed publisher)',
   'function createMarket(uint256 tokenId, string question, string[] options, uint256 bettingDuration, uint256 feeBps) external returns (address)',
   'function getDeployedMarkets() external view returns (address[] memory)',
   'function tokenToMarket(uint256 tokenId) external view returns (address)',
@@ -64,9 +52,9 @@ const PredictionMarketABI = [
   'function getMarketState() external view returns (uint8)',
   'function getClaimableWinnings(address user) external view returns (uint256)',
   'function getClaimablePublisherFees() external view returns (uint256)',
-  'function placeBet(uint256 optionIndex, uint256 amount) external',
+  'function placeBet(uint256 optionIndex) external payable',
   'function closeBetting() external',
-  'function resolveMarket(uint256 winningOptionIndex, bytes calldata oracleSignature) external',
+  'function resolveMarket(uint256 winningOptionIndex, bytes oracleSignature) external',
   'function claimWinnings() external returns (uint256)',
   'function claimPublisherFees() external returns (uint256)',
 ];
@@ -80,12 +68,8 @@ const PublishingRightsNFTABI = [
   'function getTokensByOwner(address owner) external view returns (uint256[] memory)',
 ];
 
-// ─── Initialization ──────────────────────────────────────────────────────────
-
 function getProvider() {
-  if (!provider) {
-    provider = new ethers.JsonRpcProvider(RPC_URL);
-  }
+  if (!provider) { provider = new ethers.JsonRpcProvider(RPC_URL); }
   return provider;
 }
 
@@ -96,8 +80,6 @@ function getBackendWallet() {
   }
   return backendWallet;
 }
-
-// ─── Contract Helpers ────────────────────────────────────────────────────────
 
 function getAuctionManagerContract() {
   const wallet = getBackendWallet();
@@ -124,16 +106,45 @@ function getPredictionMarketContract(marketAddress) {
   return new ethers.Contract(marketAddress, PredictionMarketABI, p);
 }
 
-// ─── Auction Operations ─────────────────────────────────────────────────────
+// ─── Nonce Management ───────────────────────────────────
+
+/** Send a transaction, letting ethers.js auto-manage nonce.
+ *  On NONCE_EXPIRED (stale RPC cache), extracts the correct nonce from the
+ *  error message and retries once with that explicit nonce. No RPC re-query. */
+async function _sendTx(actionName, sendFn) {
+  try {
+    // First attempt: let ethers Wallet auto-manage nonce internally
+    console.log(`[${actionName}] attempting (auto-nonce)...`);
+    return await sendFn(null);
+  } catch (err) {
+    if (err.code === 'NONCE_EXPIRED') {
+      // Extract the REAL expected nonce from the RPC error itself
+      const match = err.info?.error?.message?.match(/next nonce (\d+)/);
+      if (match) {
+        const correctNonce = parseInt(match[1], 10);
+        console.warn(`[${actionName}] auto-nonce expired, retrying with nonce=${correctNonce} (from error)`);
+        return await sendFn(correctNonce);
+      }
+    }
+    throw err;
+  }
+}
 
 export async function createAuction(questionHash, minimumStake, duration) {
   const contract = getAuctionManagerContract();
-  const tx = await contract.createAuction(questionHash, minimumStake, duration);
-  const receipt = await tx.wait();
-  // Extract auctionId from AuctionCreated event
+  const { tx, receipt } = await _sendTx('createAuction', async (nonce) => {
+    const opts = { gasLimit: 500000 };
+    if (nonce !== null) opts.nonce = nonce;
+    const tx = await contract.createAuction(questionHash, minimumStake, duration, opts);
+    console.log(`[createAuction] tx submitted: ${tx.hash}`);
+    const receipt = await tx.wait(1, 120000);
+    console.log(`[createAuction] tx=${tx.hash} block=${receipt.blockNumber}`);
+    return { tx, receipt };
+  });
   const event = receipt.logs.find(
     (log) => log.address.toLowerCase() === AUCTION_MANAGER_ADDR.toLowerCase()
   );
+  if (!event) throw new Error('AuctionCreated event not found in receipt logs');
   const iface = new ethers.Interface(AuctionManagerABI);
   const parsed = iface.parseLog({ topics: event.topics, data: event.data });
   return {
@@ -146,23 +157,36 @@ export async function createAuction(questionHash, minimumStake, duration) {
 
 export async function closeBidding(auctionId) {
   const contract = getAuctionManagerContract();
-  const tx = await contract.closeBidding(auctionId);
-  await tx.wait();
-  return { txHash: tx.hash };
+  await _sendTx('closeBidding', async (nonce) => {
+    const opts = {};
+    if (nonce !== null) opts.nonce = nonce;
+    const tx = await contract.closeBidding(auctionId, opts);
+    await tx.wait(1, 120000);
+    return { txHash: tx.hash };
+  });
 }
 
 export async function setShortlist(auctionId, finalists) {
   const contract = getAuctionManagerContract();
-  const tx = await contract.setShortlist(auctionId, finalists);
-  await tx.wait();
-  return { txHash: tx.hash };
+  await _sendTx('setShortlist', async (nonce) => {
+    const opts = {};
+    if (nonce !== null) opts.nonce = nonce;
+    const tx = await contract.setShortlist(auctionId, finalists, opts);
+    await tx.wait(1, 120000);
+    return { txHash: tx.hash };
+  });
 }
 
 export async function resolveAuction(auctionId, winner, winningScore, metadataURI, oracleSignature) {
   const contract = getAuctionManagerContract();
-  const tx = await contract.resolveAuction(auctionId, winner, winningScore, metadataURI, oracleSignature);
-  const receipt = await tx.wait();
-  return { txHash: tx.hash };
+  const { txHash } = await _sendTx('resolveAuction', async (nonce) => {
+    const opts = {};
+    if (nonce !== null) opts.nonce = nonce;
+    const tx = await contract.resolveAuction(auctionId, winner, winningScore, metadataURI, oracleSignature, opts);
+    const receipt = await tx.wait(1, 120000);
+    return { txHash: tx.hash };
+  });
+  return { txHash };
 }
 
 export async function getAuctionState(auctionId) {
@@ -198,12 +222,17 @@ export async function getAuctionCount() {
   return count.toString();
 }
 
-// ─── Market Operations ───────────────────────────────────────────────────────
+// ─── Market Operations ───────────────────────────────────
 
 export async function createMarket(tokenId, question, options, bettingDuration, feeBps) {
   const contract = getMarketFactoryContract();
-  const tx = await contract.createMarket(tokenId, question, options, bettingDuration, feeBps);
-  const receipt = await tx.wait();
+  const { tx, receipt } = await _sendTx('createMarket', async (nonce) => {
+    const opts = {};
+    if (nonce !== null) opts.nonce = nonce;
+    const tx = await contract.createMarket(tokenId, question, options, bettingDuration, feeBps, opts);
+    const receipt = await tx.wait(1, 120000);
+    return { tx, receipt };
+  });
   const event = receipt.logs.find(
     (log) => log.address.toLowerCase() === MARKET_FACTORY_ADDR.toLowerCase()
   );
@@ -216,9 +245,13 @@ export async function resolveMarket(marketAddress, winningOptionIndex, oracleSig
   const wallet = getBackendWallet();
   if (!wallet) throw new Error('Backend wallet not configured');
   const contract = new ethers.Contract(marketAddress, PredictionMarketABI, wallet);
-  const tx = await contract.resolveMarket(winningOptionIndex, oracleSignature);
-  await tx.wait();
-  return { txHash: tx.hash };
+  await _sendTx('resolveMarket', async (nonce) => {
+    const opts = {};
+    if (nonce !== null) opts.nonce = nonce;
+    const tx = await contract.resolveMarket(winningOptionIndex, oracleSignature, opts);
+    await tx.wait(1, 120000);
+    return { txHash: tx.hash };
+  });
 }
 
 export async function getMarketDetails(marketAddress) {

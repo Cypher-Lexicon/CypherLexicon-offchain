@@ -17,5 +17,6 @@ Thumbs.db
 coverage/
 dist/
 build/
+AUCTION_ENDING_GUIDE.md*
 # Old index.html at root (moved to public/)
 /index.html

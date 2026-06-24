@@ -7,28 +7,6 @@
 
 const API = {
 
-  // ─── News ──────────────────────────────────────────────────
-
-  /** Fetch the non-English news feed (Phase 1 translation source) */
-  async fetchNews() {
-    const res = await fetch('/api/news');
-    if (!res.ok) throw new Error(`News fetch failed: ${res.status}`);
-    return res.json();
-  },
-
-  // ─── Translation Auction (simulation) ──────────────────────
-
-  /** Run a translation auction against a news item index */
-  async runAuction(newsIndex) {
-    const res = await fetch('/api/auction', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newsIndex })
-    });
-    if (!res.ok) throw new Error(`Auction failed: ${res.status}`);
-    return res.json();
-  },
-
   // ─── Web3 Status ───────────────────────────────────────────
 
   /** Get oracle + backend wallet readiness */
@@ -38,16 +16,39 @@ const API = {
     return res.json();
   },
 
+  // ─── Operator Auth ─────────────────────────────────────────
+
+  /** Check if an address is a whitelisted operator */
+  async checkOperator(address) {
+    const res = await fetch(`/api/auth/operator/${address}`);
+    if (!res.ok) throw new Error(`Operator check failed: ${res.status}`);
+    return res.json();
+  },
+
   // ─── On-Chain Auction (Phase 1) ────────────────────────────
 
-  /** Create an on-chain auction */
-  async createAuction(questionHash, minimumStake, duration) {
+  /** List all auctions with summary info */
+  async listAuctions() {
+    const res = await fetch('/api/auctions');
+    if (!res.ok) throw new Error(`List auctions failed: ${res.status}`);
+    return res.json();
+  },
+
+  /** Create an on-chain auction (operator-only) */
+  async createAuction(minimumStake, duration, operatorAddress) {
     const res = await fetch('/api/auctions/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionHash, minimumStake: String(minimumStake), duration: String(duration) })
+      body: JSON.stringify({
+        minimumStake: String(minimumStake),
+        duration: String(duration),
+        operatorAddress
+      })
     });
-    if (!res.ok) throw new Error(`Create auction failed: ${res.status}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.details || err.error || `Create auction failed: ${res.status}`);
+    }
     return res.json();
   },
 
@@ -58,16 +59,20 @@ const API = {
     return res.json();
   },
 
-  /** Get auction state as a string (BIDDING_OPEN, etc.) */
-  async getAuctionState(auctionId) {
-    const auction = await this.getAuction(auctionId);
-    return auction.state;
+  /** Get auction details by NFT token ID (for winner-to-market flow) */
+  async getAuctionByToken(tokenId) {
+    const res = await fetch(`/api/auctions/by-token/${tokenId}`);
+    if (!res.ok) throw new Error(`Fetch auction by token failed: ${res.status}`);
+    return res.json();
   },
 
   /** Close bidding on an auction */
   async closeBidding(auctionId) {
     const res = await fetch(`/api/auctions/${auctionId}/close`, { method: 'POST' });
-    if (!res.ok) throw new Error(`Close bidding failed: ${res.status}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.details || err.error || `Close bidding failed: ${res.status}`);
+    }
     return res.json();
   },
 
@@ -82,7 +87,7 @@ const API = {
     return res.json();
   },
 
-  /** Expert evaluation of shortlisted finalists (3 expert agents, median aggregation) */
+  /** Heuristic evaluation of shortlisted finalists */
   async evaluateAuction(auctionId, expertCount = 3) {
     const res = await fetch(`/api/auctions/${auctionId}/evaluate`, {
       method: 'POST',
@@ -100,7 +105,10 @@ const API = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ winner, winningScore: String(winningScore), metadataURI })
     });
-    if (!res.ok) throw new Error(`Resolve auction failed: ${res.status}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.details || err.error || `Resolve auction failed: ${res.status}`);
+    }
     return res.json();
   },
 

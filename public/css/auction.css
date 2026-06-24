@@ -1,0 +1,555 @@
+/* ============================================================
+   Cypher Lexicon — AUCTION PHASE Stylesheet
+   
+   Visual identity: AMBER + DARK theme. Formal, bid-focused.
+   Distinct from the CYAN + BLUE prediction market theme.
+   ============================================================ */
+
+:root {
+  --auction-accent: #F59E0B;
+  --auction-accent-dim: #78350F;
+  --auction-accent-glow: rgba(245, 158, 11, 0.25);
+  --auction-border: rgba(245, 158, 11, 0.2);
+  --auction-active-bg: rgba(245, 158, 11, 0.03);
+  --auction-complete-bg: rgba(16, 185, 129, 0.03);
+  --auction-inactive-bg: rgba(107, 114, 128, 0.03);
+}
+
+/* ─── Auction Tab Active State ────────────────────────────── */
+
+#tab-auction .box-title { color: var(--auction-accent); }
+#tab-auction .box-title { border-bottom-color: var(--auction-border); }
+#tab-auction .dot { background: var(--auction-accent); box-shadow: 0 0 8px var(--auction-accent); }
+#tab-auction .dot.dot-green { background: var(--terminal-green); }
+
+#tab-auction select:focus,
+#tab-auction input:focus,
+#tab-auction textarea:focus {
+  border-color: var(--auction-accent);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+}
+
+/* ─── Auction Sub-Tab Navigation ──────────────────────────── */
+
+.auc-subtab-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--auction-border);
+  padding-bottom: 0;
+}
+
+.auc-subtab-btn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: -2px;
+}
+
+.auc-subtab-btn:hover {
+  color: var(--auction-accent);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.auc-subtab-btn.active {
+  color: var(--auction-accent);
+  border-color: var(--auction-border);
+  border-bottom-color: var(--bg-color);
+  background: var(--auction-active-bg);
+}
+
+.auc-subtab-panel {
+  display: none;
+}
+
+.auc-subtab-panel.active {
+  display: block;
+}
+
+/* ─── Auction List Cards ──────────────────────────────────── */
+
+.auction-list-section {
+  margin-top: 1rem;
+}
+
+.auc-list-card {
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px solid var(--auction-border);
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auc-list-card:hover {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.04);
+  transform: translateX(2px);
+}
+
+.auc-list-card.auc-active {
+  border-left: 3px solid var(--terminal-green);
+}
+
+.auc-list-card.auc-closed {
+  border-left: 3px solid #6b7280;
+  opacity: 0.85;
+}
+
+.auc-list-card.auc-completed {
+  border-left: 3px solid var(--terminal-cyan);
+  opacity: 0.75;
+}
+
+.auc-list-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.auc-list-card-id {
+  font-size: 0.7rem;
+  color: var(--auction-accent);
+  font-family: var(--font-mono);
+  font-weight: bold;
+}
+
+.auc-list-card-status {
+  font-size: 0.65rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+}
+
+.auc-status-active {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--terminal-green);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.auc-status-closed {
+  background: rgba(107, 114, 128, 0.12);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.25);
+}
+
+.auc-status-completed {
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--terminal-cyan);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.auc-list-card-question {
+  font-size: 0.82rem;
+  color: #e5e7eb;
+  line-height: 1.4;
+  margin-bottom: 0.35rem;
+}
+
+.auc-list-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.65rem;
+  color: #6b7280;
+}
+
+.auc-list-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.auc-list-card-stake {
+  color: var(--auction-accent);
+  font-weight: bold;
+}
+
+.auc-list-card-bidders {
+  color: var(--terminal-cyan);
+}
+
+/* Emp ty state */
+.auc-list-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+/* ─── Auction Header Banner ───────────────────────────────── */
+
+.auction-header-banner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(17, 24, 39, 0.9) 100%);
+  border: 1px solid var(--auction-border);
+  border-radius: 4px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.auction-header-banner::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--auction-accent);
+  border-radius: 4px 0 0 4px;
+}
+
+.auction-icon {
+  font-size: 1.5rem;
+  color: var(--auction-accent);
+}
+
+.auction-header-text h3 {
+  font-size: 0.95rem;
+  color: var(--auction-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.auction-header-text p {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-top: 0.15rem;
+}
+
+/* ─── Auction Creation Form ───────────────────────────────── */
+
+.auction-create-panel {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, rgba(17, 24, 39, 0.8) 100%);
+  border: 1px solid var(--auction-border);
+  border-radius: 4px;
+  padding: 1.5rem;
+}
+
+.auction-create-panel .box-title {
+  color: var(--auction-accent);
+  border-bottom-color: var(--auction-border);
+}
+
+/* ─── Bid Card ────────────────────────────────────────────── */
+
+.bid-card {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid var(--auction-border);
+  border-radius: 4px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.bid-card:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.02);
+}
+
+.bid-card.winner-bid {
+  border-color: var(--terminal-green);
+  background: rgba(16, 185, 129, 0.03);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+}
+
+.bid-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bidder-address {
+  font-size: 0.75rem;
+  color: var(--terminal-cyan);
+  font-family: var(--font-mono);
+}
+
+.bid-stake {
+  font-size: 0.8rem;
+  color: var(--auction-accent);
+  font-weight: bold;
+}
+
+.bid-question {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.bid-description {
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.5;
+  border-left: 2px solid var(--auction-border);
+  padding-left: 0.75rem;
+}
+
+.bid-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.bid-meta-item {
+  background: rgba(0,0,0,0.2);
+  padding: 0.2rem 0.5rem;
+  border-radius: 2px;
+}
+
+.bid-meta-item.options-count { color: var(--terminal-cyan); }
+.bid-meta-item.res-date { color: var(--auction-accent); }
+
+.bid-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.bid-option-tag {
+  font-size: 0.65rem;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--auction-accent);
+  padding: 0.2rem 0.5rem;
+  border-radius: 2px;
+  border: 1px solid var(--auction-border);
+}
+
+.bid-option-tag.winner-tag {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--terminal-green);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* ─── Auction Lifecycle Steps ─────────────────────────────── */
+
+.auction-lifecycle {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.lifecycle-steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+}
+
+.lifecycle-step {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border-color-dim);
+  border-radius: 4px;
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #4b5563;
+  transition: all 0.3s ease;
+}
+
+.lifecycle-step.active {
+  border-color: var(--auction-accent);
+  color: var(--auction-accent);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.lifecycle-step.complete {
+  border-color: var(--terminal-green);
+  color: var(--terminal-green);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.lifecycle-step .step-icon {
+  font-size: 1.2rem;
+  margin-bottom: 0.3rem;
+  display: block;
+}
+
+/* ─── Bidding Section ─────────────────────────────────────── */
+
+.auction-bidding {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--auction-border);
+  border-radius: 4px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auction-bidding .box-title {
+  color: var(--auction-accent);
+  border-bottom-color: var(--auction-border);
+}
+
+.bid-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 700px) {
+  .bid-form-row { grid-template-columns: 1fr; }
+}
+
+/* ─── Bidders List ────────────────────────────────────────── */
+
+.bidders-container {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bidder-count-badge {
+  font-size: 0.65rem;
+  color: var(--auction-accent);
+  background: rgba(245, 158, 11, 0.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+  border: 1px solid var(--auction-border);
+}
+
+/* ─── Winner Token Display ────────────────────────────────── */
+
+.winner-token-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(17, 24, 39, 0.9) 100%);
+  border: 1px solid var(--terminal-green);
+  border-radius: 4px;
+  padding: 1.25rem;
+  position: relative;
+}
+
+.winner-token-card::before {
+  content: 'PUBLISHING RIGHTS TOKEN';
+  position: absolute;
+  top: -0.5rem;
+  left: 1rem;
+  background: var(--bg-color);
+  border: 1px solid var(--terminal-green);
+  padding: 0 0.5rem;
+  font-size: 0.55rem;
+  font-weight: bold;
+  color: var(--terminal-green);
+  letter-spacing: 0.1em;
+}
+
+.winner-token-address {
+  font-size: 0.75rem;
+  color: var(--terminal-cyan);
+  font-family: var(--font-mono);
+}
+
+.winner-token-id {
+  font-size: 1rem;
+  color: var(--terminal-green);
+  font-weight: bold;
+}
+
+/* ─── Pagination ─────────────────────────────────────────── */
+
+.auc-pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--auction-border);
+}
+
+.pagination-info {
+  font-size: 0.65rem;
+  color: #6b7280;
+}
+
+.pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pg-btn {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--auction-border);
+  border-radius: 3px;
+  color: #9ca3af;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 28px;
+  text-align: center;
+}
+
+.pg-btn:hover:not([disabled]):not(.pg-current) {
+  border-color: var(--auction-accent);
+  color: var(--auction-accent);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.pg-btn[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.pg-btn.pg-current {
+  background: var(--auction-accent);
+  border-color: var(--auction-accent);
+  color: #111;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.pg-ellipsis {
+  font-size: 0.65rem;
+  color: #4b5563;
+  padding: 0 0.15rem;
+  user-select: none;
+}
+
+/* ─── Manual Close Section ────────────────────────────────── */
+
+.manual-close-section {
+  background: rgba(239, 68, 68, 0.03);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.manual-close-section .box-title { color: var(--terminal-red); border-bottom-color: rgba(239, 68, 68, 0.15); }
+
+.curl-box {
+  background: #111;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--terminal-red);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+}

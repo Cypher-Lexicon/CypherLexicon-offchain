@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cypher Lexicon — AI Agent Prediction Market</title>
+  <title>Cypher Lexicon — AUCTION + PREDICTION MARKET</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
-  <!-- ethers.js v6 from CDN for browser wallet & contract interaction -->
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/auction.css">
+  <link rel="stylesheet" href="/css/market.css">
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.16.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
@@ -19,7 +20,7 @@
   <header>
     <div class="header-title-section">
       <h1>Cypher <span class="accent">Lexicon</span></h1>
-      <p>AI agent bidding &amp; translation race for prediction market alpha</p>
+      <p>On-chain auction for publishing rights &rarr; prediction markets</p>
     </div>
     <div class="system-telemetry">
       <div class="telemetry-row">
@@ -32,270 +33,316 @@
   </header>
 
   <!-- ═══════════════════════════════════════════════════════════
-       TAB NAVIGATION
+       TAB NAVIGATION (2 tabs)
        ═══════════════════════════════════════════════════════════ -->
   <div class="tab-nav">
-    <button class="tab-btn active" data-tab="translation">Translation Arena</button>
-    <button class="tab-btn" data-tab="auction">On-Chain Auction</button>
-    <button class="tab-btn" data-tab="markets">Prediction Markets</button>
-    <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
+    <button class="tab-btn active" data-tab="auction"><span class="phase-badge auction">PHASE 1</span> Auction</button>
+    <button class="tab-btn" data-tab="markets"><span class="phase-badge market">PHASE 2</span> Prediction Markets</button>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════
-       TAB 1: TRANSLATION ARENA (Phase 1 Simulation)
+       TAB 1: AUCTION (Phase 1 — AMBER THEME)
+       Split into two sub-tabs: CREATE (operator-only) + LIST (public)
        ═══════════════════════════════════════════════════════════ -->
-  <div class="tab-panel active" id="tab-translation">
+  <div class="tab-panel active" id="tab-auction">
 
-    <!-- News Selector & Run -->
-    <div class="control-station">
-      <div class="control-box">
-        <div class="box-title">
-          <span>NEWS SELECTOR PANEL</span>
-          <div class="dot"></div>
-        </div>
-        <div class="selector-container">
-          <label for="news-select">SELECT NON-ENGLISH FEED ITEM</label>
-          <select id="news-select"></select>
-        </div>
-        <div class="news-display-card" id="news-display-card">
-          <div class="news-meta">
-            <span class="source-badge" id="news-source">SOURCE: ---</span>
-            <span class="lang-badge" id="news-lang">---</span>
+    <!-- Phase Banner -->
+    <div class="auction-header-banner">
+      <div class="auction-icon">&#9763;</div>
+      <div class="auction-header-text">
+        <h3>PHASE 1 &mdash; PUBLISHING RIGHTS AUCTION</h3>
+        <p>Bid ARC to win publishing rights. <strong>Bidders propose</strong> the question, description, resolution options, and date with their bid.</p>
+      </div>
+    </div>
+
+    <!-- Auction Sub-Tab Navigation -->
+    <div class="auc-subtab-nav">
+      <button class="auc-subtab-btn active" data-auc-subtab="create"><span class="phase-badge auction">OPERATOR</span> Create Auction</button>
+      <button class="auc-subtab-btn" data-auc-subtab="list"><span class="phase-badge auction">PUBLIC</span> Auction List</button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         SUB-TAB 1: CREATE AUCTION (OPERATOR ONLY)
+         ══════════════════════════════════════════════════════ -->
+    <div class="auc-subtab-panel active" id="auc-subtab-create">
+
+      <!-- Operator wallet connect + create form (hidden until authorized) -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div class="web3-panel">
+          <div class="box-title">
+            <span>OPERATOR WALLET</span>
+            <div class="dot dot-green"></div>
           </div>
-          <div class="original-text" id="news-original">---</div>
-          <div class="english-hint" id="news-hint">---</div>
+          <div id="auc-create-wallet-state" style="margin:0.75rem 0;">
+            <div class="web3-status-row">
+              <span style="color:var(--terminal-red)">NOT CONNECTED</span>
+              <span>---</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary" id="btn-auc-create-connect" style="width:100%;">CONNECT WALLET</button>
+        </div>
+
+        <!-- Create Auction form (only visible to whitelisted operators) -->
+        <div class="auction-create-panel" id="auc-create-form-panel" style="display:none;">
+          <div class="box-title">
+            <span>CREATE AUCTION (OPERATOR)</span>
+            <div class="dot"></div>
+          </div>
+          <p style="font-size:0.7rem;color:#6b7280;margin:0.5rem 0 1rem 0;">
+            Opens a bidding round. <strong>Bidders propose</strong> the question, options, and resolution date with their stake.
+          </p>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="auction-create-min-stake">MINIMUM STAKE (ARC)</label>
+              <input type="number" id="auction-create-min-stake" placeholder="100" value="100" min="1" step="0.01">
+            </div>
+            <div class="form-group">
+              <label for="auction-create-duration">DURATION (seconds)</label>
+              <input type="number" id="auction-create-duration" placeholder="3600" value="3600">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-auction-create" style="width:100%;">CREATE AUCTION</button>
+        </div>
+
+        <!-- Non-operator indicator -->
+        <div class="web3-panel" id="auc-create-unauthorized">
+          <div style="color:#6b7280;font-size:0.75rem;text-align:center;padding:1.5rem 0;">
+            Only whitelisted operators can create auctions.<br>
+            <span style="color:var(--terminal-amber);">Connect wallet to check your operator status.</span>
+          </div>
         </div>
       </div>
 
-      <div class="action-pane">
-        <div class="box-title" style="width:100%;text-align:left;justify-content:flex-start;gap:0.5rem;">
-          <span style="color:var(--terminal-green)">AUCTION TRIGGER</span>
-          <div class="dot dot-green"></div>
+      <!-- Auction Detail + Lifecycle (visible after creating an auction) -->
+      <div class="auction-lifecycle" id="auc-create-detail" style="display:none;">
+        <div class="box-title">
+          <span>AUCTION STATUS</span>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <input type="number" id="auction-load-id" placeholder="Auction ID" style="width:100px;padding:0.3rem 0.5rem;font-size:0.7rem;">
+            <button class="btn btn-sm btn-secondary" id="btn-auction-load">LOAD</button>
+            <button class="btn btn-sm btn-secondary" id="btn-auction-refresh">REFRESH</button>
+          </div>
         </div>
-        <button class="btn btn-primary" id="run-auction" disabled>RUN AUCTION</button>
-        <div class="auction-status" id="auction-status">INITIALIZING SYSTEM...</div>
-      </div>
-    </div>
 
-    <!-- Agent Cards -->
-    <div class="agent-race-section">
-      <div class="box-title" style="margin-bottom:0.5rem;">
-        <span>AGENT ARENA COMPETITORS</span>
-        <div class="dot"></div>
-      </div>
-      <div class="agent-columns" id="agent-columns"></div>
-    </div>
-
-    <!-- Winner Card -->
-    <div class="bottom-dashboard">
-      <div class="winning-card-container" id="winning-card-container">
-        <div class="winner-headline-banner">
-          <span class="arrow">&#9654;</span>
-          <span>AUCTION FINALIZED: WINNING TRANSLATION RESOLVED</span>
+        <!-- Lifecycle Steps -->
+        <div class="lifecycle-steps">
+          <div class="lifecycle-step active"><span class="step-icon">&#9679;</span><span>1. CREATED</span></div>
+          <div class="lifecycle-step"><span class="step-icon">&#9679;</span><span>2. BIDDING</span></div>
+          <div class="lifecycle-step"><span class="step-icon">&#9679;</span><span>3. CLOSED</span></div>
+          <div class="lifecycle-step"><span class="step-icon">&#9679;</span><span>4. SHORTLISTED</span></div>
+          <div class="lifecycle-step"><span class="step-icon">&#9679;</span><span>5. COMPLETED</span></div>
         </div>
-        <div class="market-card">
-          <div class="market-title" id="winner-market-title">---</div>
-          <div class="market-criteria" id="winner-market-criteria">---</div>
-          <div class="market-footer">
-            <div class="market-tags" id="winner-market-tags"></div>
-            <div class="confidence-meter-container">
-              <span class="confidence-val" id="winner-confidence-val">---</span>
-              <div class="confidence-meter-bar">
-                <div class="confidence-meter-fill" id="winner-confidence-fill" style="width:0%;"></div>
-              </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+          <div class="control-box">
+            <div class="info-row"><span class="info-label">AUCTION ID</span><span class="info-value mono" id="auction-id-display">---</span></div>
+            <div class="info-row"><span class="info-label">MIN STAKE</span><span class="info-value" id="auction-min-stake-display">---</span></div>
+            <div class="info-row"><span class="info-label">DEADLINE</span><span class="info-value" id="auction-deadline-display">---</span></div>
+            <div class="info-row"><span class="info-label">BIDDERS</span><span class="info-value" id="auction-bidder-count">---</span></div>
+            <div class="info-row" style="color:#6b7280;font-size:0.65rem;"><span>Questions, options &amp; dates are <strong>proposed by bidders</strong> when they place bids.</span></div>
+          </div>
+
+          <div class="control-box">
+            <div class="form-actions" style="flex-direction:column;">
+              <button class="btn btn-sm btn-danger" id="btn-auction-close" disabled>1. CLOSE BIDDING (MANUAL)</button>
+              <button class="btn btn-sm btn-secondary" id="btn-auction-filter" disabled>2. AI FILTER &amp; SHORTLIST</button>
+              <button class="btn btn-sm btn-secondary" id="btn-auction-evaluate" disabled>3. EVALUATE FINALISTS</button>
+              <button class="btn btn-sm btn-primary" id="btn-auction-resolve" disabled>4. RESOLVE &amp; MINT NFT</button>
+            </div>
+            <div class="winner-token-card" id="auction-winner-section" style="display:none;">
+              <div class="info-row"><span class="info-label">WINNER</span><span class="info-value winner-token-address" id="auction-winner-display">---</span></div>
+              <div class="info-row"><span class="info-label">NFT TOKEN</span><span class="info-value winner-token-id" id="auction-nft-display">---</span></div>
             </div>
           </div>
         </div>
+
+        <!-- Manual Close / curl reference -->
+        <div class="manual-close-section">
+          <div class="box-title" style="font-size:0.7rem;">
+            <span>MANUAL AUCTION CLOSE (via curl)</span>
+            <div class="dot" style="background:var(--terminal-red);box-shadow:0 0 8px var(--terminal-red);"></div>
+          </div>
+          <div class="curl-box" id="auction-curl-box">
+            curl -X POST http://localhost:3000/api/auctions/:id/close
+          </div>
+          <p style="font-size:0.65rem;color:#6b7280;margin-top:0.4rem;">
+            Run this command or click the CLOSE BIDDING button to manually end the auction. The dapp operator decides when to end the auction (typically at end of day). Once closed, no new bids are accepted.
+          </p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ═══════════════════════════════════════════════════════════
-       TAB 2: ON-CHAIN AUCTION (Phase 1 Web3)
-       ═══════════════════════════════════════════════════════════ -->
-  <div class="tab-panel" id="tab-auction">
+    <!-- ══════════════════════════════════════════════════════
+         SUB-TAB 2: AUCTION LIST (PUBLIC)
+         ══════════════════════════════════════════════════════ -->
+    <div class="auc-subtab-panel" id="auc-subtab-list">
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-      <!-- Wallet Panel -->
+      <!-- Public wallet connect -->
       <div class="web3-panel">
         <div class="box-title">
           <span>WALLET CONNECTION</span>
           <div class="dot dot-green"></div>
         </div>
-        <div id="web3-wallet-state" style="margin:0.75rem 0;">
+        <div id="auc-list-wallet-state" style="margin:0.75rem 0;">
           <div class="web3-status-row">
             <span style="color:var(--terminal-red)">NOT CONNECTED</span>
             <span>---</span>
           </div>
         </div>
-        <button class="btn btn-secondary" id="btn-connect-wallet" style="width:100%;">CONNECT WALLET</button>
+        <button class="btn btn-secondary" id="btn-auc-list-connect" style="width:100%;">CONNECT WALLET</button>
       </div>
 
-      <!-- Push to Chain -->
-      <div class="action-pane" style="align-items:flex-start;text-align:left;">
-        <div class="box-title" style="width:100%;">
-          <span>PUSH WINNER TO CHAIN</span>
-          <div class="dot"></div>
+      <!-- Auction List Grid -->
+      <div class="auction-list-section">
+        <div class="box-title" style="border-bottom:1px solid var(--auction-border);margin-bottom:0.75rem;">
+          <span>ALL AUCTIONS</span>
+          <button class="btn btn-sm btn-secondary" id="btn-auc-list-refresh">REFRESH</button>
         </div>
-        <p style="font-size:0.8rem;color:#6b7280;">
-          After a translation auction completes, push the winning prediction market question on-chain.
-        </p>
-        <button class="btn btn-primary" id="btn-push-to-chain" disabled style="width:100%;">
-          CREATE ON-CHAIN AUCTION
-        </button>
-      </div>
-    </div>
-
-    <!-- Auction Lifecycle -->
-    <div class="auction-lifecycle">
-      <div class="box-title">
-        <span>AUCTION LIFECYCLE</span>
-        <div class="dot"></div>
-      </div>
-
-      <div class="lifecycle-steps">
-        <div class="lifecycle-step active" id="step-create">
-          <span class="step-icon">&#9679;</span>
-          <span>1. CREATED</span>
-        </div>
-        <div class="lifecycle-step" id="step-bidding">
-          <span class="step-icon">&#9679;</span>
-          <span>2. BIDDING</span>
-        </div>
-        <div class="lifecycle-step" id="step-closed">
-          <span class="step-icon">&#9679;</span>
-          <span>3. CLOSED</span>
-        </div>
-        <div class="lifecycle-step" id="step-shortlist">
-          <span class="step-icon">&#9679;</span>
-          <span>4. SHORTLISTED</span>
-        </div>
-        <div class="lifecycle-step" id="step-complete">
-          <span class="step-icon">&#9679;</span>
-          <span>5. COMPLETED</span>
+        <div id="auc-list-container">
+          <div class="empty-state">Loading auctions...</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-        <div class="control-box">
-          <div class="info-row">
-            <span class="info-label">AUCTION ID</span>
-            <span class="info-value mono" id="auction-id-display">---</span>
+      <!-- Auction Detail + Bid Panel (shown when clicking an auction) -->
+      <div id="auc-list-detail" style="display:none;">
+        <div class="box-title" style="border-bottom:1px solid var(--auction-border);margin-bottom:0.75rem;">
+          <span>AUCTION DETAIL</span>
+          <button class="btn btn-sm btn-secondary" id="btn-auc-list-back">&#8592; BACK TO LIST</button>
+        </div>
+
+        <!-- Auction info (minimal) -->
+        <div class="control-box" style="margin-bottom:1rem;">
+          <div class="info-row"><span class="info-label">AUCTION ID</span><span class="info-value mono" id="auc-list-auction-id">---</span></div>
+          <div class="info-row"><span class="info-label">TIME REMAINING</span><span class="info-value" id="auc-list-time-remaining">---</span></div>
+          <div class="info-row"><span class="info-label">MIN STAKE</span><span class="info-value" id="auc-list-min-stake">---</span></div>
+          <div class="info-row"><span class="info-label">BIDDERS</span><span class="info-value" id="auc-list-bidder-count">---</span></div>
+        </div>
+
+        <!-- Bidding List (shown below auction detail) -->
+        <div id="auc-list-bidders-section" style="display:none;">
+          <div class="box-title" style="border-bottom:1px solid var(--auction-border);margin-bottom:0.5rem;">
+            <span>BIDS</span>
+            <span id="auc-list-bidder-count-badge" class="bidder-count-badge">0</span>
           </div>
-          <div class="info-row">
-            <span class="info-label">QUESTION</span>
-            <span class="info-value" id="auction-question" style="font-size:0.75rem;">---</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">TX HASH</span>
-            <span class="info-value mono" id="auction-tx-hash" style="font-size:0.65rem;">---</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">BIDDER COUNT</span>
-            <span class="info-value" id="auction-bidder-count">---</span>
+          <div class="bidders-container" id="auc-list-bidders">
+            <div class="empty-state">No bids yet.</div>
           </div>
         </div>
 
-        <div class="control-box">
-          <div class="form-actions" style="flex-direction:column;">
-            <button class="btn btn-sm btn-secondary" id="btn-close-bidding" disabled>1. CLOSE BIDDING</button>
-            <button class="btn btn-sm btn-secondary" id="btn-filter-auction" disabled>2. AI FILTER &amp; SET SHORTLIST</button>
-            <button class="btn btn-sm btn-primary" id="btn-resolve-auction" disabled>3. RESOLVE &amp; MINT TOKEN</button>
-            <button class="btn btn-sm btn-secondary" id="btn-refresh-auction">REFRESH STATE</button>
+        <!-- Place Bid Section (only visible when auction is BIDDING_OPEN) -->
+        <div class="auction-bidding" id="auc-list-bid-panel" style="display:none;">
+          <div class="box-title">
+            <span>PLACE YOUR BID</span>
+            <div class="dot dot-green"></div>
           </div>
+
+          <div id="auc-list-bid-status" style="font-size:0.75rem;color:#6b7280;margin-bottom:0.5rem;">
+            Connect wallet and submit your bid with a prediction question.
+          </div>
+
+          <div class="form-group">
+            <label for="auc-list-bid-stake">STAKE AMOUNT (ARC)</label>
+            <input type="number" id="auc-list-bid-stake" placeholder="Minimum stake" min="1" step="0.01" value="100">
+          </div>
+          <div class="form-group">
+            <label for="auc-list-bid-question">PREDICTION QUESTION</label>
+            <input type="text" id="auc-list-bid-question" placeholder='e.g. "Will ETH exceed $5000 by Dec 2026?"'>
+          </div>
+          <div class="form-group">
+            <label for="auc-list-bid-description">DESCRIPTION / ADDITIONAL INFO</label>
+            <textarea id="auc-list-bid-description" placeholder="Add context, resolution criteria, data sources, etc." rows="3"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="auc-list-bid-options">RESOLUTION OPTIONS (comma-separated)</label>
+              <input type="text" id="auc-list-bid-options" placeholder="YES, NO">
+            </div>
+            <div class="form-group">
+              <label for="auc-list-bid-res-date">RESOLUTION DATE</label>
+              <input type="date" id="auc-list-bid-res-date">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-auc-list-place-bid" style="width:100%;">PLACE BID</button>
+          <button class="btn btn-sm btn-secondary" id="btn-auc-list-withdraw" style="width:100%;margin-top:0.3rem;">WITHDRAW STAKE (IF NOT WINNER)</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════
-       TAB 3: PREDICTION MARKETS (Phase 2)
+       TAB 2: PREDICTION MARKETS (Phase 2 — CYAN/BLUE THEME)
        ═══════════════════════════════════════════════════════════ -->
   <div class="tab-panel" id="tab-markets">
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-      <!-- Create Market Form -->
-      <div class="control-box">
-        <div class="box-title">
-          <span>CREATE PREDICTION MARKET</span>
-          <div class="dot dot-green"></div>
-        </div>
-        <div class="form-group">
-          <label for="market-token-id">TOKEN ID</label>
-          <select id="market-token-id">
-            <option value="">Connect wallet &amp; refresh tokens</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="market-question">QUESTION</label>
-          <input type="text" id="market-question" placeholder="Will ETH exceed $5000 by Dec 2026?">
-        </div>
-        <div class="form-group">
-          <label for="market-options">OPTIONS (comma-separated)</label>
-          <input type="text" id="market-options" placeholder="YES, NO">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="market-duration">DURATION (seconds)</label>
-            <input type="number" id="market-duration" placeholder="3600" value="3600">
-          </div>
-          <div class="form-group">
-            <label for="market-fee-bps">FEE (bps)</label>
-            <input type="number" id="market-fee-bps" placeholder="250" value="250">
-          </div>
-        </div>
-        <button class="btn btn-primary" id="btn-create-market" style="width:100%;">CREATE MARKET</button>
-      </div>
-
-      <!-- Wallet State -->
-      <div class="web3-panel">
-        <div class="box-title">
-          <span>WALLET &amp; TOKENS</span>
-          <div class="dot"></div>
-        </div>
-        <div id="web3-market-state" style="margin:0.75rem 0;">
-          <div class="web3-status-row">
-            <span style="color:var(--terminal-red)">WALLET NOT CONNECTED</span>
-            <span>---</span>
-          </div>
-        </div>
-        <button class="btn btn-sm btn-secondary" id="btn-load-tokens" style="width:100%;">LOAD MY TOKENS</button>
+    <!-- Phase Banner -->
+    <div class="market-header-banner">
+      <div class="market-icon">&#9733;</div>
+      <div class="market-header-text">
+        <h3>PHASE 2 &mdash; PREDICTION MARKETS</h3>
+        <p>NFT holders create markets with their auction-winning questions. Anyone can bet ARC on outcomes. Parimutuel payouts.</p>
       </div>
     </div>
 
-    <!-- Deployed Markets List -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+      <!-- Create Market Form -->
+      <div class="market-create-panel">
+        <div class="box-title">
+          <span>CREATE PREDICTION MARKET</span>
+          <div class="dot"></div>
+        </div>
+        <div class="form-group">
+          <label for="market-create-token">NFT TOKEN ID</label>
+          <select id="market-create-token">
+            <option value="">Connect wallet &amp; refresh tokens</option>
+          </select>
+          <span class="token-select-hint">You need a Publishing Rights NFT from winning an auction.</span>
+        </div>
+        <div class="form-group">
+          <label for="market-create-question">QUESTION</label>
+          <input type="text" id="market-create-question" placeholder="Will ETH exceed $5000 by Dec 2026?">
+        </div>
+        <div class="form-group">
+          <label for="market-create-options">OPTIONS (comma-separated)</label>
+          <input type="text" id="market-create-options" placeholder="YES, NO">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="market-create-duration">BETTING DURATION (seconds)</label>
+            <input type="number" id="market-create-duration" placeholder="3600" value="3600">
+          </div>
+          <div class="form-group">
+            <label for="market-create-fee">PUBLISHER FEE (bps)</label>
+            <input type="number" id="market-create-fee" placeholder="250" value="250">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-market-create" style="width:100%;">CREATE MARKET</button>
+      </div>
+
+      <!-- Wallet + Tokens -->
+      <div class="web3-panel">
+        <div class="box-title">
+          <span>WALLET &amp; TOKENS</span>
+          <div class="dot dot-green"></div>
+        </div>
+        <div id="market-wallet-state" style="margin:0.75rem 0;">
+          <div class="web3-status-row">
+            <span style="color:var(--terminal-red)">NOT CONNECTED</span>
+            <span>---</span>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-secondary" id="btn-market-load-tokens" style="width:100%;">LOAD MY TOKENS</button>
+      </div>
+    </div>
+
+    <!-- Deployed Markets -->
     <div class="control-box">
       <div class="box-title">
         <span>DEPLOYED MARKETS</span>
-        <button class="btn btn-sm btn-secondary" id="btn-refresh-markets">REFRESH</button>
+        <button class="btn btn-sm btn-secondary" id="btn-market-refresh">REFRESH</button>
       </div>
       <div class="markets-grid" id="markets-list">
         <div class="empty-state">Loading markets...</div>
       </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       TAB 4: LEADERBOARD
-       ═══════════════════════════════════════════════════════════ -->
-  <div class="tab-panel" id="tab-leaderboard">
-    <div class="leaderboard-container">
-      <div class="leaderboard-header">
-        <span>PERSISTENT STATS LEADERBOARD</span>
-        <button class="btn btn-sm btn-danger" id="btn-reset-stats">RESET STATS</button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>RANK</th>
-            <th>AGENT NAME</th>
-            <th class="numeric-cell">WINS</th>
-            <th class="numeric-cell">TOTAL POINTS</th>
-            <th class="numeric-cell">EARNED (USDC)</th>
-          </tr>
-        </thead>
-        <tbody id="leaderboard-body"></tbody>
-      </table>
     </div>
   </div>
 
@@ -312,14 +359,12 @@
   <!-- ═══════════════════════════════════════════════════════════
        JAVASCRIPT (loaded in dependency order)
        ═══════════════════════════════════════════════════════════ -->
-  <script src="/js/api.js"></script>
-  <script src="/js/ui.js"></script>
-  <script src="/js/web3.js"></script>
-  <script src="/js/leaderboard.js"></script>
-  <script src="/js/agents.js"></script>
-  <script src="/js/auction.js"></script>
-  <script src="/js/market.js"></script>
-  <script src="/js/app.js"></script>
+  <script src="/js/core/api.js?v=15"></script>
+  <script src="/js/core/ui.js?v=15"></script>
+  <script src="/js/core/web3.js?v=15"></script>
+  <script src="/js/auction/auction.js?v=15"></script>
+  <script src="/js/market/market.js?v=15"></script>
+  <script src="/js/app.js?v=15"></script>
 
 </body>
 </html>

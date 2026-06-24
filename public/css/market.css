@@ -1,0 +1,169 @@
+/* ============================================================
+   Cypher Lexicon — PREDICTION MARKET Phase Stylesheet
+   
+   Visual identity: CYAN + BLUE theme. Trading dashboard feel.
+   Distinct from the AMBER + DARK auction phase theme.
+   ============================================================ */
+
+/* ─── Market Tab Active State ─────────────────────────────── */
+
+#tab-markets .box-title { color: var(--terminal-cyan); }
+#tab-markets .dot { background: var(--terminal-cyan); box-shadow: 0 0 8px var(--terminal-cyan); }
+
+#tab-markets select:focus,
+#tab-markets input:focus {
+  border-color: var(--terminal-cyan);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+}
+
+/* ─── Market Header Banner ────────────────────────────────── */
+
+.market-header-banner {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(17, 24, 39, 0.9) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 4px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.market-header-banner::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--terminal-cyan);
+  border-radius: 4px 0 0 4px;
+}
+
+.market-icon {
+  font-size: 1.5rem;
+  color: var(--terminal-cyan);
+}
+
+.market-header-text h3 {
+  font-size: 0.95rem;
+  color: var(--terminal-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.market-header-text p {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-top: 0.15rem;
+}
+
+/* ─── Markets Grid ────────────────────────────────────────── */
+
+.markets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.market-item-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  border-radius: 4px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.market-item-card:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.05);
+}
+
+.market-state {
+  display: inline-block;
+  font-size: 0.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.market-state.BETTING_OPEN { background: rgba(16, 185, 129, 0.15); color: var(--terminal-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+.market-state.BETTING_CLOSED { background: rgba(245, 158, 11, 0.15); color: var(--terminal-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+.market-state.RESOLVED { background: rgba(6, 182, 212, 0.15); color: var(--terminal-cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+.market-state.INACTIVE { background: rgba(107, 114, 128, 0.15); color: #6b7280; border: 1px solid rgba(107, 114, 128, 0.3); }
+
+.market-options { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.market-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  background: rgba(0,0,0,0.2);
+  border-radius: 2px;
+  font-size: 0.8rem;
+}
+
+.market-option-pool {
+  color: var(--terminal-cyan);
+  font-weight: bold;
+  font-size: 0.75rem;
+}
+
+/* ─── Bet Row ─────────────────────────────────────────────── */
+
+.bet-row {
+  border-top: 1px solid rgba(6, 182, 212, 0.1);
+  padding-top: 0.75rem;
+}
+
+.bet-row input {
+  background: #090d16;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  border-radius: 4px;
+  outline: none;
+}
+
+.bet-row input:focus {
+  border-color: var(--terminal-cyan);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.1);
+}
+
+.bet-amount-display {
+  font-size: 0.65rem;
+  color: #6b7280;
+}
+
+.bet-amount-display .balance { color: var(--terminal-green); }
+
+/* ─── Market Create Form ──────────────────────────────────── */
+
+.market-create-panel {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.03) 0%, rgba(17, 24, 39, 0.8) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 4px;
+  padding: 1.5rem;
+}
+
+.market-create-panel .box-title { color: var(--terminal-cyan); border-bottom-color: rgba(6, 182, 212, 0.2); }
+
+/* ─── Token Selection ─────────────────────────────────────── */
+
+.token-select-hint {
+  font-size: 0.65rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+/* ─── Responsive Markets ──────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .markets-grid { grid-template-columns: 1fr; }
+}
