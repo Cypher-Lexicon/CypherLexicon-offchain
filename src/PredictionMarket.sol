@@ -96,6 +96,7 @@ contract PredictionMarket is ReentrancyGuard {
     error InvalidOracleSignature();
     error FeesAlreadyClaimed();
     error UsePlaceBet();
+    error NoWinningBets();
 
     // ─── Modifiers ───────────────────────────────────────────────────────────
 
@@ -178,6 +179,11 @@ contract PredictionMarket is ReentrancyGuard {
 
     /// @notice Reject plain ETH transfers. Users must call placeBet() instead.
     receive() external payable {
+        revert UsePlaceBet();
+    }
+
+    /// @notice Reject calls with unmatched function selectors.
+    fallback() external payable {
         revert UsePlaceBet();
     }
 
@@ -337,6 +343,24 @@ contract PredictionMarket is ReentrancyGuard {
         emit PublisherFeesClaimed(msg.sender, publisherCut, platformCut);
 
         return publisherCut;
+    }
+
+    /**
+     * @notice Recover the bet pool if the winning option received zero bets.
+     *         Only callable when the market is RESOLVED and nobody can claim
+     *         winnings. Funds are sent to the platform address.
+     */
+    function recoverUnclaimedFunds()
+        external
+        nonReentrant
+        inState(MarketState.RESOLVED)
+    {
+        if (totalWinningBets > 0) revert NoWinningBets();
+        uint256 pool = totalBetPool;
+        if (pool == 0) revert NothingToClaim();
+        totalBetPool = 0;
+        (bool sent, ) = payable(platformAddress).call{value: pool}("");
+        require(sent, "Transfer failed");
     }
 
     // ─── View Functions ──────────────────────────────────────────────────────
