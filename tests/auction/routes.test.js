@@ -276,6 +276,7 @@ describe('POST /api/auctions/:id/close', () => {
 describe('POST /api/auctions/:id/filter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAuctionState.mockResolvedValue('BIDDING_CLOSED');
   });
 
   it('should filter bidders when no finalists provided', async () => {
@@ -293,6 +294,7 @@ describe('POST /api/auctions/:id/filter', () => {
   });
 
   it('should use provided finalists array directly', async () => {
+    mockGetAuctionState.mockResolvedValue('BIDDING_CLOSED');
     mockSetShortlist.mockResolvedValue({ txHash: '0xfilter' });
 
     const app = createTestApp();
@@ -314,6 +316,18 @@ describe('POST /api/auctions/:id/filter', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('No bidders');
+  });
+
+  it('should return 400 if auction is not in BIDDING_CLOSED state', async () => {
+    mockGetAuctionState.mockResolvedValue('COMPLETED');
+
+    const app = createTestApp();
+    const res = await request(app)
+      .post('/api/auctions/1/filter')
+      .send({ finalists: [BIDDER_ADDR] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Cannot set shortlist in current state');
   });
 });
 

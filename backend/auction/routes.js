@@ -316,6 +316,15 @@ export function registerAuctionRoutes(app) {
   app.post('/api/auctions/:id/filter', async (req, res) => {
     try {
       const auctionId = parseInt(req.params.id);
+
+      // Check auction state before proceeding
+      const state = await getAuctionState(auctionId);
+      if (state !== 'BIDDING_CLOSED') {
+        return res.status(400).json({
+          error: `Cannot set shortlist in current state (${state}). Auction must be in BIDDING_CLOSED state.`
+        });
+      }
+
       const { finalists } = req.body;
       let finalistAddresses;
 

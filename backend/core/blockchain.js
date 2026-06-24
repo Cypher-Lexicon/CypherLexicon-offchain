@@ -168,6 +168,14 @@ export async function closeBidding(auctionId) {
 
 export async function setShortlist(auctionId, finalists) {
   const contract = getAuctionManagerContract();
+
+  // Validate state before sending
+  const state = await contract.getAuctionState(auctionId);
+  const states = ['INACTIVE', 'BIDDING_OPEN', 'BIDDING_CLOSED', 'SHORTLIST_SET', 'COMPLETED'];
+  if (state !== 2) {
+    throw new Error(`Cannot set shortlist in state ${states[state] || state}. Auction must be in BIDDING_CLOSED state.`);
+  }
+
   await _sendTx('setShortlist', async (nonce) => {
     const opts = {};
     if (nonce !== null) opts.nonce = nonce;

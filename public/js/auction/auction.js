@@ -86,6 +86,10 @@ const AuctionCreate = {
     // Resolve & mint token
     const resolveBtn = document.getElementById('btn-auction-resolve');
     if (resolveBtn) resolveBtn.addEventListener('click', () => this.resolveAuction());
+
+    // Operator auction list refresh
+    const opRefreshBtn = document.getElementById('btn-auc-create-list-refresh');
+    if (opRefreshBtn) opRefreshBtn.addEventListener('click', () => this.loadOperatorAuctions());
   },
 
   // ─── Wallet ──────────────────────────────────────────────
@@ -165,13 +169,18 @@ const AuctionCreate = {
   _updateOperatorUI() {
     const createPanel = document.getElementById('auc-create-form-panel');
     const unauthorized = document.getElementById('auc-create-unauthorized');
+    const opListSection = document.getElementById('auc-create-list-section');
 
     if (this.isOperator) {
       if (createPanel) createPanel.style.display = '';
       if (unauthorized) unauthorized.style.display = 'none';
+      if (opListSection) opListSection.style.display = '';
+      // Load the operator auction list when operator is verified
+      this.loadOperatorAuctions();
     } else {
       if (createPanel) createPanel.style.display = 'none';
       if (unauthorized) unauthorized.style.display = '';
+      if (opListSection) opListSection.style.display = 'none';
       // Also hide detail/lifecycle panel for non-operators
       const detail = document.getElementById('auc-create-detail');
       if (detail) detail.style.display = 'none';
@@ -222,6 +231,8 @@ const AuctionCreate = {
       UI.hide('auction-winner-section');
 
       this._updateLifecycle(1); // BIDDING_OPEN
+      // Refresh the operator auction list to include the new auction
+      this.loadOperatorAuctions();
       UI.log(`Auction #${result.auctionId} created. Bidding open!`);
       UI.toast(`Auction #${result.auctionId} created!`, 'success');
     } catch (err) {
@@ -259,6 +270,7 @@ const AuctionCreate = {
       UI.setText('auction-id-display', `#${auction.auctionId}`);
       UI.setText('auction-min-stake-display', `${auction.minimumStake || '---'} ARC`);
       UI.setText('auction-deadline-display', this._formatDeadline(auction.biddingEndTime));
+      UI.setText('auction-bidder-count', `${auction.bidderCount || 0}`);
 
       if (auction.winner && auction.winner !== '0x0000000000000000000000000000000000000000') {
         UI.setText('auction-winner-display', `${auction.winner.slice(0, 10)}...`);
@@ -280,6 +292,9 @@ const AuctionCreate = {
       UI.setDisabled('btn-auction-filter', stateIdx < 2);
       UI.setDisabled('btn-auction-evaluate', stateIdx < 3);
       UI.setDisabled('btn-auction-resolve', stateIdx < 3);
+
+      // Also refresh the operator auction list to show updated states
+      this.loadOperatorAuctions();
 
       UI.log(`Auction #${auction.auctionId} refreshed. State: ${auction.state}`);
     } catch (err) {
@@ -409,6 +424,135 @@ const AuctionCreate = {
 
     const labels = ['created', 'bidding', 'closed', 'shortlisted', 'evaluated', 'completed'];
     UI.log(`Auction lifecycle: ${labels[stepIndex] || 'unknown'}`);
+  },
+
+  // ─── Operator Auction List (Manage Auctions) ─────────────
+
+  _opAuctions: [],
+  _opPage: 1,
+  _opPageSize: 7,
+
+  async loadOperatorAuctions() {
+    const container = document.getElementById('auc-create-list-container');
+    if (!container) return;
+
+    container.innerHTML = '<div class="empty-state">Loading auctions...</div>';
+
+    try {
+      const result = await API.listAuctions();
+      this._opAuctions = result.auctions || [];
+      this._opPage = 1;
+
+      if (this._opAuctions.length === 0) {
+        container.innerHTML = '<div class="auc-list-empty">No auctions found. Create one above.</div>';
+        this._renderOperatorPagination();
+        return;
+      }
+
+      this._renderOperatorPage();
+      this._renderOperatorPagination();
+    } catch (err) {
+      container.innerHTML = `<span style="color:var(--terminal-red);">Error: ${err.message}</span>`;
+    }
+  },
+
+  _renderOperatorPage() {
+    const container = document.getElementById('auc-create-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const start = (this._opPage - 1) * this._opPageSize;
+    const end = Math.min(start + this._opPageSize, this._opAuctions.length);
+    const pageItems = this._opAuctions.slice(start, end);
+
+    pageItems.forEach(auction => this._renderOperatorAuctionCard(auction, container));
+  },
+
+  _renderOperatorPagination() {
+    const pg = document.getElementById('auc-create-list-pagination');
+    if (!pg) return;
+
+    const totalPages = Math.max(1, Math.ceil(this._opAuctions.length / this._opPageSize));
+    if (totalPages <= 1) { pg.style.display = 'none'; pg.innerHTML = ''; return; }
+    pg.style.display = '';
+
+    let html = `<span class="pagination-info">${this._opAuctions.length} auctions &bull; page ${this._opPage}/${totalPages}</span>`;
+    html += '<div class="pagination-buttons">';
+
+    html += `<button class="pg-btn" ${this._opPage <= 1 ? 'disabled' : ''} onclick="AuctionCreate._goToOperatorPage(${this._opPage - 1})">&#8592; PREV</button>`;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === this._opPage) {
+        html += `<button class="pg-btn pg-current">${i}</button>`;
+      } else if (i === 1 || i === totalPages || Math.abs(i - this._opPage) <= 1) {
+        html += `<button class="pg-btn" onclick="AuctionCreate._goToOperatorPage(${i})">${i}</button>`;
+      } else if (i === 2 && this._opPage > 3) {
+        html += '<span class="pg-ellipsis">...</span>';
+      } else if (i === totalPages - 1 && this._opPage < totalPages - 2) {
+        html += '<span class="pg-ellipsis">...</span>';
+      }
+    }
+
+    html += `<button class="pg-btn" ${this._opPage >= totalPages ? 'disabled' : ''} onclick="AuctionCreate._goToOperatorPage(${this._opPage + 1})">NEXT &#8594;</button>`;
+    html += '</div>';
+    pg.innerHTML = html;
+  },
+
+  _goToOperatorPage(page) {
+    const totalPages = Math.ceil(this._opAuctions.length / this._opPageSize);
+    if (page < 1 || page > totalPages) return;
+    this._opPage = page;
+    this._renderOperatorPage();
+    this._renderOperatorPagination();
+  },
+
+  _renderOperatorAuctionCard(auction, container) {
+    const card = document.createElement('div');
+    card.className = 'auc-list-card';
+
+    let stateClass = 'auc-closed';
+    let stateLabel = auction.state;
+    let statusClass = 'auc-status-closed';
+
+    if (auction.isActive) {
+      stateClass = 'auc-active';
+      stateLabel = 'ACTIVE';
+      statusClass = 'auc-status-active';
+    } else if (auction.isComplete) {
+      stateClass = 'auc-completed';
+      stateLabel = 'COMPLETED';
+      statusClass = 'auc-status-completed';
+    }
+
+    card.classList.add(stateClass);
+
+    const biddersLabel = auction.bidderCount === 1 ? 'bidder' : 'bidders';
+    const question = auction.question || '';
+    const questionDisplay = question
+      ? question
+      : '<span style="color:#9ca3af;font-style:italic;">Questions proposed by bidders</span>';
+    const deadline = auction.biddingEndTime ? `Block: ${auction.biddingEndTime}` : '---';
+
+    card.innerHTML = `
+      <div class="auc-list-card-header">
+        <span class="auc-list-card-id">Auction #${auction.auctionId}</span>
+        <span class="auc-list-card-status ${statusClass}">${stateLabel}</span>
+      </div>
+      <div class="auc-list-card-question">${questionDisplay}</div>
+      <div class="auc-list-card-meta">
+        <span class="auc-list-card-stake">${auction.minimumStake} ARC min</span>
+        <span class="auc-list-card-bidders">${auction.bidderCount} ${biddersLabel}</span>
+        <span>${deadline}</span>
+      </div>
+    `;
+
+    // Click loads this auction into the operator lifecycle panel
+    card.addEventListener('click', () => {
+      this.currentAuctionId = auction.auctionId;
+      this.refreshAuction();
+    });
+
+    container.appendChild(card);
   }
 };
 
