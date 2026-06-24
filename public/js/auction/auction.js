@@ -287,11 +287,15 @@ const AuctionCreate = {
       const stateIdx = stateMap[auction.state] || 0;
       for (let i = 0; i <= stateIdx; i++) this._updateLifecycle(i);
 
-      // Update operator buttons
-      UI.setDisabled('btn-auction-close', stateIdx < 1);
-      UI.setDisabled('btn-auction-filter', stateIdx < 2);
-      UI.setDisabled('btn-auction-evaluate', stateIdx < 3);
-      UI.setDisabled('btn-auction-resolve', stateIdx < 3);
+      // Strict sequential flow: each button is only enabled during its
+      // prerequisite state. The operator must complete each step before
+      // the next becomes available. Evaluation is tracked locally since
+      // it's an off-chain step (on-chain state stays SHORTLIST_SET).
+      const hasEvalResult = !!this._evalResult?.winner;
+      UI.setDisabled('btn-auction-close', stateIdx !== 1);                       // only BIDDING_OPEN
+      UI.setDisabled('btn-auction-filter', stateIdx !== 2);                      // only BIDDING_CLOSED
+      UI.setDisabled('btn-auction-evaluate', stateIdx !== 3 || hasEvalResult);   // only SHORTLIST_SET & not yet evaluated
+      UI.setDisabled('btn-auction-resolve', stateIdx !== 3 || !hasEvalResult);   // only SHORTLIST_SET & evaluated
 
       // Also refresh the operator auction list to show updated states
       this.loadOperatorAuctions();
@@ -330,7 +334,7 @@ const AuctionCreate = {
     try {
       UI.log(`Closing bidding for Auction #${this.currentAuctionId}...`);
       await API.closeBidding(this.currentAuctionId);
-      this._updateLifecycle(2);
+      await this.refreshAuction();
       UI.log(`Bidding closed for Auction #${this.currentAuctionId}. No new bids accepted.`);
       UI.toast('Bidding closed!', 'success');
     } catch (err) {
@@ -348,7 +352,7 @@ const AuctionCreate = {
     try {
       UI.log(`Running two-stage filter for Auction #${this.currentAuctionId}...`);
       const result = await API.filterAuction(this.currentAuctionId);
-      this._updateLifecycle(3);
+      await this.refreshAuction();
       UI.log(`Shortlist set. ${result.finalists.length} finalists selected.`);
       UI.toast(`${result.finalists.length} bidders shortlisted.`, 'success');
     } catch (err) {
@@ -367,7 +371,7 @@ const AuctionCreate = {
       UI.log(`Evaluating finalists for Auction #${this.currentAuctionId}...`);
       const result = await API.evaluateAuction(this.currentAuctionId);
       this._evalResult = result;
-      this._updateLifecycle(4);
+      await this.refreshAuction();
       UI.log(`Evaluation complete. Winner: ${result.winner.address.slice(0, 10)}... (score ${result.winner.score.toFixed(3)})`);
       UI.toast(`Winner: ${result.winner.address.slice(0, 10)}...`, 'success');
     } catch (err) {
@@ -394,7 +398,8 @@ const AuctionCreate = {
     try {
       UI.log(`Resolving Auction #${this.currentAuctionId}. Winner: ${winnerAddr.slice(0, 10)}...`);
       await API.resolveAuction(this.currentAuctionId, winnerAddr, winningScore);
-      this._updateLifecycle(5);
+      delete this._evalResult;
+      await this.refreshAuction();
       UI.log(`Auction #${this.currentAuctionId} resolved! NFT minted to winner.`);
       UI.toast('Auction resolved! Token minted!', 'success');
 
