@@ -95,6 +95,7 @@ contract PredictionMarket is ReentrancyGuard {
     error NothingToClaim();
     error InvalidOracleSignature();
     error FeesAlreadyClaimed();
+    error UsePlaceBet();
 
     // ─── Modifiers ───────────────────────────────────────────────────────────
 
@@ -171,6 +172,13 @@ contract PredictionMarket is ReentrancyGuard {
         _market.state = MarketState.BETTING_OPEN;
 
         emit MarketCreated(_question, _options.length, _feeBps, _market.bettingEndTime);
+    }
+
+    // ─── Receive / Fallback ──────────────────────────────────────────────────
+
+    /// @notice Reject plain ETH transfers. Users must call placeBet() instead.
+    receive() external payable {
+        revert UsePlaceBet();
     }
 
     // ─── Betting ─────────────────────────────────────────────────────────────
